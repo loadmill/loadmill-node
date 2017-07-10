@@ -1,0 +1,16 @@
+{
+  "name": "loadmill",
+  "version": "0.0.2",
+  "description": "A node.js module for running load tests and functional tests on loadmill.com",
+  "keywords": [
+    "loadmill",
+    "load-testing",
+    "node",
+    "ci",
+    "functional-testing"
+  ],
+  "main": "index.js",
+  "repository": "https://github.com/loadmill/loadmill-node.git",
+  "author": "itaysabato <itay@loadmill.com>",
+  "license": "MIT"
+}
