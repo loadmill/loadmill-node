@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "outDir": ".",
+    "module": "CommonJS",
+    "importHelpers": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "moduleResolution": "Node",
+    "noUnusedParameters": true,
+    "lib": [
+      "es5",
+      "es2015.promise"
+    ]
+  },
+  "files": [
+    "./lib/index.ts"
+  ]
+}

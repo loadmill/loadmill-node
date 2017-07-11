@@ -12,5 +12,16 @@
   "main": "index.js",
   "repository": "https://github.com/loadmill/loadmill-node.git",
   "author": "itaysabato <itay@loadmill.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "tsc"
+  },
+  "dependencies": {
+    "superagent": "^3.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.10",
+    "tslib": "^1.7.1",
+    "typescript": "^2.4.1"
+  }
 }
