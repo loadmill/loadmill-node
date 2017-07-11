@@ -43,6 +43,48 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
             );
         },
 
+        wait(loadTestId: string, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
+            let _resolve, _reject;
+
+            const intervalId = setInterval(async () => {
+                    try {
+                        const {body: {result}} = await superagent.get(`https://www.loadmill.com/api/tests/${loadTestId}`)
+                            .auth(token, '');
+
+                        if (result) {
+                            clearInterval(intervalId);
+
+                            const testResult = {
+                                id: loadTestId,
+                                passed: result === 'done',
+                                url: `https://www.loadmill.com/app/test/${loadTestId}`,
+                            };
+
+                            if (callback) {
+                                callback(null, testResult);
+                            }
+                            else {
+                                _resolve(testResult);
+                            }
+                        }
+                    }
+                    catch (err) {
+                        if (callback) {
+                            callback(err, null);
+                        }
+                        else {
+                            _reject(err);
+                        }
+                    }
+                },
+                10 * 1000);
+
+            return callback ? null! as Promise<any> : new Promise((resolve, reject) => {
+                _resolve = resolve;
+                _reject = reject;
+            });
+        },
+
         runFunctional(
             config: Loadmill.Configuration,
             paramsOrCallback?: Loadmill.ParamsOrCallback,
