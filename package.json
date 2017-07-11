@@ -14,7 +14,7 @@
   "author": "itaysabato <itay@loadmill.com>",
   "license": "MIT",
   "scripts": {
-    "postinstall": "tsc"
+    "prepublish": "tsc"
   },
   "dependencies": {
     "superagent": "^3.5.2"
