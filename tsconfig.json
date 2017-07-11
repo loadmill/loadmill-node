@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "outDir": ".",
+    "declaration": true,
     "module": "CommonJS",
     "importHelpers": true,
     "noImplicitThis": true,

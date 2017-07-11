@@ -1,59 +1,85 @@
 import * as fs from 'fs';
 import * as superagent from 'superagent';
 
-export = function ({token}: { token: string }) {
-    return new LoadmillClient(token);
-}
+export = Loadmill;
 
-class LoadmillClient {
-    constructor(readonly token: string) {
+namespace Loadmill {
+    export interface LoadmillOptions {
+        token: string;
     }
 
-    run = (config: object | string, paramsOrCallback?: ParamsOrCallback, callback?: Callback) => wrap(
-        async () => {
-            config = toConfig(config, paramsOrCallback);
+    export interface TestResult {
+        id: string;
+        url: string;
+        passed: boolean;
+    }
 
-            const {body: {testId}} = await this._auth(superagent.post("https://www.loadmill.com/api/tests")
-                .send(config));
-
-            await this._auth(superagent.put(`https://www.loadmill.com/api/tests/${testId}/load`));
-
-            return testId;
-        },
-        callback || paramsOrCallback
-    );
-
-    runFunctional = async (config: object | string, paramsOrCallback?: ParamsOrCallback, callback?: Callback) => wrap(
-        async () => {
-            config = toConfig(config, paramsOrCallback);
-
-            const {
-                body: {
-                    id,
-                    trialResult,
-                    incompleteMessage,
-                }
-            } = await this._auth(superagent.post("https://www.loadmill.com/api/tests/trials")
-                .send(config));
-
-            if (incompleteMessage) {
-                throw Error(incompleteMessage);
-            }
-            else {
-                return {
-                    id,
-                    url: `https://www.loadmill.com/app/functional/${id}`,
-                    passed: trialResult && Object.keys(trialResult.failures || {}).length === 0,
-                };
-            }
-        },
-        callback || paramsOrCallback
-    );
-
-    _auth = req => req.auth(this.token, '');
+    export type Configuration = object | string;
+    export type ParamsOrCallback = object | Callback;
+    export type Callback = {(err: Error | null, result: any): void} | undefined;
 }
 
-function wrap(asyncFunction, paramsOrCallback?: ParamsOrCallback) {
+function Loadmill({token}: Loadmill.LoadmillOptions) {
+    return {
+        run(
+            config: Loadmill.Configuration,
+            paramsOrCallback?: Loadmill.ParamsOrCallback,
+            callback?: Loadmill.Callback): Promise<string> {
+
+            return wrap(
+                async () => {
+                    config = toConfig(config, paramsOrCallback);
+
+                    const {body: {testId}} = await superagent.post("https://www.loadmill.com/api/tests")
+                        .send(config)
+                        .auth(token, '');
+
+                    await superagent.put(`https://www.loadmill.com/api/tests/${testId}/load`)
+                        .auth(token, '');
+
+                    return testId;
+                },
+                callback || paramsOrCallback
+            );
+        },
+
+        runFunctional(
+            config: Loadmill.Configuration,
+            paramsOrCallback?: Loadmill.ParamsOrCallback,
+            callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
+
+            return wrap(
+                async () => {
+                    config = toConfig(config, paramsOrCallback);
+
+                    const {
+                        body: {
+                            id,
+                            trialResult,
+                            incompleteMessage,
+                        }
+                    } = await superagent.post("https://www.loadmill.com/api/tests/trials")
+                        .send(config)
+                        .auth(token, '');
+
+                    if (incompleteMessage) {
+                        throw Error(incompleteMessage);
+                    }
+                    else {
+                        return {
+                            id,
+                            url: `https://www.loadmill.com/app/functional/${id}`,
+                            passed: trialResult && Object.keys(trialResult.failures || {}).length === 0,
+                        };
+                    }
+                },
+                callback || paramsOrCallback
+            );
+        },
+    };
+}
+
+function wrap(asyncFunction, paramsOrCallback?: Loadmill.ParamsOrCallback) {
     const promise = asyncFunction();
 
     if (typeof paramsOrCallback === 'function') {
@@ -65,7 +91,7 @@ function wrap(asyncFunction, paramsOrCallback?: ParamsOrCallback) {
     }
 }
 
-function toConfig(config: any | string, paramsOrCallback?: ParamsOrCallback) {
+function toConfig(config: any | string, paramsOrCallback?: Loadmill.ParamsOrCallback) {
     if (typeof config === 'string') {
         let text = fs.readFileSync(config).toString();
         config = JSON.parse(text);
@@ -87,6 +113,3 @@ function toConfig(config: any | string, paramsOrCallback?: ParamsOrCallback) {
 
     return config;
 }
-
-type ParamsOrCallback = object | Callback;
-type Callback = {(err, result): void};
