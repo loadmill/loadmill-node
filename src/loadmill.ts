@@ -16,8 +16,21 @@ const {
     wait,
     token,
     loadTest,
-    args: [file, ...parameters]
+    args: [file, ...rawParams]
 } = program;
+
+const parameters: {[key: string]: string} = {};
+
+rawParams.forEach(pair => {
+    const pivot = pair.indexOf('=');
+    if (pivot <= 0) {
+        console.error("Invalid parameter assignment:", pair);
+        program.help();
+    }
+
+    const name = pair.slice(0, pivot);
+    parameters[name] = pair.slice(pivot + 1, pair.length);
+});
 
 console.log("Input:", {
     file,
