@@ -1,6 +1,6 @@
 {
   "name": "loadmill",
-  "version": "0.0.14",
+  "version": "0.1.0-dev",
   "description": "A node.js module for running load tests and functional tests on loadmill.com",
   "keywords": [
     "loadmill",
@@ -9,19 +9,24 @@
     "ci",
     "functional-testing"
   ],
-  "main": "index.js",
+  "bin": {
+    "loadmill": "bin/loadmill"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "repository": "https://github.com/loadmill/loadmill-node.git",
   "author": "itaysabato <itay@loadmill.com>",
   "license": "MIT",
   "scripts": {
-    "prepare": "tsc"
+    "prepare": "tsc && rm -f lib/loadmill.d.ts"
   },
   "dependencies": {
-    "superagent": "^3.5.2"
+    "commander": "^2.11.0",
+    "superagent": "^3.5.2",
+    "tslib": "^1.7.1"
   },
   "devDependencies": {
     "@types/node": "^8.0.10",
-    "tslib": "^1.7.1",
     "typescript": "^2.4.1"
   }
 }
