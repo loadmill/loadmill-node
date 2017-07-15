@@ -9,14 +9,19 @@
     "ci",
     "functional-testing"
   ],
-  "main": "index.js",
+  "bin": {
+    "loadmill": "bin/loadmill"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "repository": "https://github.com/loadmill/loadmill-node.git",
   "author": "itaysabato <itay@loadmill.com>",
   "license": "MIT",
   "scripts": {
-    "prepare": "tsc"
+    "prepare": "tsc && rm -f lib/loadmill.d.ts"
   },
   "dependencies": {
+    "commander": "^2.11.0",
     "superagent": "^3.5.2"
   },
   "devDependencies": {
