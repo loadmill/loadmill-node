@@ -89,7 +89,7 @@ loadmill.runFunctional("./load-tests/parametrized_test.json", {host: "test.${par
 
 ## CLI
 
-The loadmill command line interface basically wraps the functions provided by the node module:
+The loadmill Command Line Interface basically wraps the functions provided by the node module:
 ```
 loadmill <config-file> -t <token> [options] [parameter=value...]
 ```
@@ -126,7 +126,7 @@ Other errors, such as invalid command line arguments or unavailable network will
 
 You may set loadmill parameter values via command line arguments by passing `name=value` pairs:
 ```
-loadmill parametrized_test.json -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG host=test.myapp.com port=4443
+loadmill parametrized_test.json host=test.myapp.com port=4443 -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
 
 ### CLI Options
