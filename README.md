@@ -74,7 +74,7 @@ loadmill.runFunctional("./load-tests/api_test.json")
     .then(result => console.log(result));
 ```
 
-If you functional test is supposed to, or may, take longer than 25 seconds, you can use `runAsyncFunctional` instead:
+If your functional test is supposed to, or may, take longer than 25 seconds, you can use `runAsyncFunctional` instead:
 ```js
 loadmill.runAsyncFunctional("./load-tests/api_test.json")
     // -> {id: string, type: 'functional', passed: null, url: string}
