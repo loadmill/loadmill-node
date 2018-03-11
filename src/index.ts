@@ -27,6 +27,45 @@ const TYPE_LOAD = 'load';
 const TYPE_FUNCTIONAL = 'functional';
 
 function Loadmill({token}: Loadmill.LoadmillOptions) {
+
+    async function _runFunctional(
+        async: boolean,
+        config: Loadmill.Configuration,
+        paramsOrCallback: Loadmill.ParamsOrCallback,
+        callback: Loadmill.Callback) {
+
+        return wrap(
+            async () => {
+                config = toConfig(config, paramsOrCallback);
+
+                config['async'] = async;
+
+                const {
+                    body: {
+                        id,
+                        trialResult,
+                        incompleteMessage,
+                    }
+                } = await superagent.post("https://www.loadmill.com/api/tests/trials")
+                    .send(config)
+                    .auth(token, '');
+
+                if (incompleteMessage) {
+                    throw Error(incompleteMessage);
+                }
+                else {
+                    return {
+                        id,
+                        type: TYPE_FUNCTIONAL,
+                        url: `https://www.loadmill.com/app/functional/${id}`,
+                        passed: async ? null : isFunctionalPassed(trialResult),
+                    };
+                }
+            },
+            callback || paramsOrCallback
+        );
+    }
+
     return {
         run(
             config: Loadmill.Configuration,
@@ -69,7 +108,7 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
                             clearInterval(intervalId);
 
                             const testResult = {
-                                id: testDef,
+                                ...testDef,
                                 url: testUrls.web,
                                 passed: testDef.type === TYPE_LOAD ?
                                     result === 'done' : isFunctionalPassed(trialResult),
@@ -112,50 +151,33 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
             paramsOrCallback?: Loadmill.ParamsOrCallback,
             callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
 
-            return wrap(
-                async () => {
-                    config = toConfig(config, paramsOrCallback);
+            return _runFunctional(false, config, paramsOrCallback, callback);
+        },
 
-                    const {
-                        body: {
-                            id,
-                            trialResult,
-                            incompleteMessage,
-                        }
-                    } = await superagent.post("https://www.loadmill.com/api/tests/trials")
-                        .send(config)
-                        .auth(token, '');
+        runAsyncFunctional(
+            config: Loadmill.Configuration,
+            paramsOrCallback?: Loadmill.ParamsOrCallback,
+            callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
 
-                    if (incompleteMessage) {
-                        throw Error(incompleteMessage);
-                    }
-                    else {
-                        return {
-                            id,
-                            type: TYPE_FUNCTIONAL,
-                            passed: isFunctionalPassed(trialResult),
-                            url: `https://www.loadmill.com/app/functional/${id}`,
-                        };
-                    }
-                },
-                callback || paramsOrCallback
-            );
+            return _runFunctional(true, config, paramsOrCallback, callback);
         },
     };
 }
 
 function isFunctionalPassed(trialResult) {
-    return trialResult && Object.keys(trialResult.failures || {}).length === 0;
+    return !!trialResult && Object.keys(trialResult.failures || {}).length === 0;
 }
 
 function getTestUrls(testDef: Loadmill.TestDef) {
-    const apiPath = testDef.type === TYPE_FUNCTIONAL ? 'trials/' : '';
-    const webPath = testDef.type === TYPE_FUNCTIONAL ? 'test' : 'functional';
-
     return {
-        api: `https://www.loadmill.com/api/tests/${apiPath}${testDef.id}`,
-        web: `https://www.loadmill.com/app/${webPath}/${testDef}`,
+        api: getTestUrl(testDef, 'https://www.loadmill.com/api/tests/', 'trials/', ''),
+        web: getTestUrl(testDef, 'https://www.loadmill.com/app/', 'functional/', 'test/'),
     };
+}
+
+function getTestUrl({id, type}: Loadmill.TestDef, prefix: string, funcSuffix: string, loadSuffix: string) {
+    const suffix = type === TYPE_FUNCTIONAL ? funcSuffix : loadSuffix;
+    return `${prefix}${suffix}${id}`
 }
 
 function wrap(asyncFunction, paramsOrCallback?: Loadmill.ParamsOrCallback) {
