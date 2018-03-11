@@ -60,7 +60,7 @@ You can explicitly wait for a test to finish using the `wait` function:
  ```js
 loadmill.run("./load-tests/long_test.json")
     .then(loadmill.wait)
-    // -> {id: string, passed: boolean, url: string}
+    // -> {id: string, type: 'load', passed: boolean, url: string}
     .then(result => console.log(result));
 ```
 
@@ -70,7 +70,23 @@ You may also use a test configuration to run a functional test (i.e. a single it
 Functional tests are expected to be shorter and thus are awaited on by default:
 ```js
 loadmill.runFunctional("./load-tests/api_test.json")
-    // -> {id: string, passed: boolean, url: string}
+    // -> {id: string, type: 'functional', passed: boolean, url: string}
+    .then(result => console.log(result));
+```
+
+If your functional test is supposed to, or may, take longer than 25 seconds, you can use `runAsyncFunctional` instead:
+```js
+loadmill.runAsyncFunctional("./load-tests/api_test.json")
+    // -> {id: string, type: 'functional', passed: null, url: string}
+    .then(result => console.log(result));
+```
+
+Note that in this case the `passed` property is `null` since the promise resolves before the test is finished.
+If you want to wait for the full result you can use `wait` here as well:
+```js
+loadmill.runAsyncFunctional("./load-tests/api_test.json")
+    .then(loadmill.wait)
+    // -> {id: string, type: 'functional', passed: boolean, url: string}
     .then(result => console.log(result));
 ```
 
@@ -136,7 +152,8 @@ Full list of command line options:
 - `-h, --help` Output usage information.
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. If not set, a functional test will run instead.
-- `-w, --wait` Wait for the load test to finish. Functional tests are always waited on.
+- `-a, --async` Run the test asynchronously - affects only functional tests. Use this if your test can take longer than 25 seconds (otherwise it will timeout).
+- `-w, --wait` Wait for the test to finish. Functional tests are automatically waited on unless async flag is turned on.
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).
 - `-v, --verbose` Print out extra information for debugging (trumps `-q`).
