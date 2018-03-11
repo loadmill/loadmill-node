@@ -8,8 +8,12 @@ namespace Loadmill {
         token: string;
     }
 
-    export interface TestResult {
+    export interface TestDef {
         id: string;
+        type: string;
+    }
+
+    export interface TestResult extends TestDef {
         url: string;
         passed: boolean;
     }
@@ -18,6 +22,9 @@ namespace Loadmill {
     export type ParamsOrCallback = object | Callback;
     export type Callback = {(err: Error | null, result: any): void} | undefined;
 }
+
+const TYPE_LOAD = 'load';
+const TYPE_FUNCTIONAL = 'functional';
 
 function Loadmill({token}: Loadmill.LoadmillOptions) {
     return {
@@ -43,45 +50,60 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
             );
         },
 
-        wait(loadTestId: string, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
-            let _resolve, _reject;
+        wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
+            let resolve, reject;
+
+            const testDef = typeof testDefOrId === 'string' ? {
+                id: testDefOrId,
+                type: TYPE_LOAD,
+            } : testDefOrId;
+
+            const testUrls = getTestUrls(testDef);
 
             const intervalId = setInterval(async () => {
                     try {
-                        const {body: {result}} = await superagent.get(`https://www.loadmill.com/api/tests/${loadTestId}`)
+                        const {body: {trialResult, result}} = await superagent.get(testUrls.api)
                             .auth(token, '');
 
-                        if (result) {
+                        if (result || trialResult) {
                             clearInterval(intervalId);
 
                             const testResult = {
-                                id: loadTestId,
-                                passed: result === 'done',
-                                url: `https://www.loadmill.com/app/test/${loadTestId}`,
+                                id: testDef,
+                                url: testUrls.web,
+                                passed: testDef.type === TYPE_LOAD ?
+                                    result === 'done' : isFunctionalPassed(trialResult),
                             };
 
                             if (callback) {
                                 callback(null, testResult);
                             }
                             else {
-                                _resolve(testResult);
+                                resolve(testResult);
                             }
                         }
                     }
                     catch (err) {
+                        if (testDef.type === TYPE_FUNCTIONAL && err.status === 404) {
+                            // 404 for functional could be fine when async - keep going:
+                            return;
+                        }
+
+                        clearInterval(intervalId);
+
                         if (callback) {
                             callback(err, null);
                         }
                         else {
-                            _reject(err);
+                            reject(err);
                         }
                     }
                 },
                 10 * 1000);
 
-            return callback ? null! as Promise<any> : new Promise((resolve, reject) => {
-                _resolve = resolve;
-                _reject = reject;
+            return callback ? null! as Promise<any> : new Promise((_resolve, _reject) => {
+                resolve = _resolve;
+                reject = _reject;
             });
         },
 
@@ -110,14 +132,29 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
                     else {
                         return {
                             id,
+                            type: TYPE_FUNCTIONAL,
+                            passed: isFunctionalPassed(trialResult),
                             url: `https://www.loadmill.com/app/functional/${id}`,
-                            passed: trialResult && Object.keys(trialResult.failures || {}).length === 0,
                         };
                     }
                 },
                 callback || paramsOrCallback
             );
         },
+    };
+}
+
+function isFunctionalPassed(trialResult) {
+    return trialResult && Object.keys(trialResult.failures || {}).length === 0;
+}
+
+function getTestUrls(testDef: Loadmill.TestDef) {
+    const apiPath = testDef.type === TYPE_FUNCTIONAL ? 'trials/' : '';
+    const webPath = testDef.type === TYPE_FUNCTIONAL ? 'test' : 'functional';
+
+    return {
+        api: `https://www.loadmill.com/api/tests/${apiPath}${testDef.id}`,
+        web: `https://www.loadmill.com/app/${webPath}/${testDef}`,
     };
 }
 
