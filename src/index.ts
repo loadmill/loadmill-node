@@ -26,7 +26,13 @@ namespace Loadmill {
 const TYPE_LOAD = 'load';
 const TYPE_FUNCTIONAL = 'functional';
 
-function Loadmill({token}: Loadmill.LoadmillOptions) {
+function Loadmill(options: Loadmill.LoadmillOptions) {
+    const {
+        token,
+        _testingServerHost = "www.loadmill.com"
+    } = options as any;
+
+    const testingServer = "https://" + _testingServerHost;
 
     async function _runFunctional(
         async: boolean,
@@ -46,7 +52,7 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
                         trialResult,
                         incompleteMessage,
                     }
-                } = await superagent.post("https://www.loadmill.com/api/tests/trials")
+                } = await superagent.post(testingServer + "/api/tests/trials")
                     .send(config)
                     .auth(token, '');
 
@@ -57,7 +63,7 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
                     return {
                         id,
                         type: TYPE_FUNCTIONAL,
-                        url: `https://www.loadmill.com/app/functional/${id}`,
+                        url: `${testingServer}/app/functional/${id}`,
                         passed: async ? null : isFunctionalPassed(trialResult),
                     };
                 }
@@ -76,11 +82,11 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
                 async () => {
                     config = toConfig(config, paramsOrCallback);
 
-                    const {body: {testId}} = await superagent.post("https://www.loadmill.com/api/tests")
+                    const {body: {testId}} = await superagent.post(testingServer + "/api/tests")
                         .send(config)
                         .auth(token, '');
 
-                    await superagent.put(`https://www.loadmill.com/api/tests/${testId}/load`)
+                    await superagent.put(`${testingServer}/api/tests/${testId}/load`)
                         .auth(token, '');
 
                     return testId;
@@ -97,11 +103,15 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
                 type: TYPE_LOAD,
             } : testDefOrId;
 
-            const testUrls = getTestUrls(testDef);
+            const apiUrl = getTestUrl(testDef,
+                testingServer + '/api/tests/', 'trials/', '');
+
+            const webUrl = getTestUrl(testDef,
+                testingServer + '/app/', 'functional/', 'test/');
 
             const intervalId = setInterval(async () => {
                     try {
-                        const {body: {trialResult, result}} = await superagent.get(testUrls.api)
+                        const {body: {trialResult, result}} = await superagent.get(apiUrl)
                             .auth(token, '');
 
                         if (result || trialResult) {
@@ -109,7 +119,7 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
 
                             const testResult = {
                                 ...testDef,
-                                url: testUrls.web,
+                                url: webUrl,
                                 passed: testDef.type === TYPE_LOAD ?
                                     result === 'done' : isFunctionalPassed(trialResult),
                             };
@@ -166,13 +176,6 @@ function Loadmill({token}: Loadmill.LoadmillOptions) {
 
 function isFunctionalPassed(trialResult) {
     return !!trialResult && Object.keys(trialResult.failures || {}).length === 0;
-}
-
-function getTestUrls(testDef: Loadmill.TestDef) {
-    return {
-        api: getTestUrl(testDef, 'https://www.loadmill.com/api/tests/', 'trials/', ''),
-        web: getTestUrl(testDef, 'https://www.loadmill.com/app/', 'functional/', 'test/'),
-    };
 }
 
 function getTestUrl({id, type}: Loadmill.TestDef, prefix: string, funcSuffix: string, loadSuffix: string) {
