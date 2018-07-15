@@ -42,7 +42,7 @@ loadmill.run({requests: [{url: "www.myapp.com"}]}, (err, id) => {
 ### Test Configuration
 
 The JSON test configuration may be exported from the loadmill test editor or from an old test run.
-Read more about the configuration format [here](https://docs.loadmill.com/setup/test-configurations).
+Read more about the configuration format [here](https://docs.loadmill.com/test-scenarios/configuration-files).
 
 ### Using Promises
 
@@ -93,7 +93,7 @@ loadmill.runAsyncFunctional("./load-tests/api_test.json")
 ### Parameters
 
 You will usually want some part of your test to be _dynamic_, e.g. the host name of the tested server.
-With Loadmill, this is made easy by using [parameters](https://docs.loadmill.com/setup/parameters).
+With Loadmill, this is made easy by using [parameters](https://docs.loadmill.com/test-scenarios/parameters).
 You may set/override parameter defaults for a test by passing a hash mapping parameter names to values:
 ```js
 // Parameters may come before or instead of a callback:
