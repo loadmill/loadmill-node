@@ -108,6 +108,7 @@ async function start() {
 }
 
 function validationFailed(...args) {
+    console.log('');
     console.error('\x1b[31m', ... args, '\x1b[0m');
     program.outputHelp();
     process.exit(3);

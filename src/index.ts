@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as superagent from 'superagent';
+import {getJSONFilesInFolderRecursively} from './utils';
 
 export = Loadmill;
 
@@ -93,6 +94,30 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 },
                 callback || paramsOrCallback
             );
+        },
+
+        async runFolder(
+            folderPath: string,
+            paramsOrCallback?: Loadmill.ParamsOrCallback,
+            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestResult>> {
+
+            const listOfFiles = getJSONFilesInFolderRecursively(folderPath);
+            if (listOfFiles.length === 0) {
+                console.log(`No Loadmill test files were found at ${folderPath} - exiting...`);
+            }
+            const results: Loadmill.TestResult[] = [];
+            let shouldContinue: boolean = true;
+            for (let file of listOfFiles)  {
+                if (shouldContinue) {
+                    await this.run(file, paramsOrCallback, callback)
+                        .then(this.wait)
+                        .then((result) => {
+                            results.push(result);
+                            shouldContinue = result.passed;
+                        })
+                } else break;
+            }
+            return results;
         },
 
         wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
