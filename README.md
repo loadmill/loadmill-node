@@ -67,7 +67,7 @@ loadmill.run("./load-tests/long_test.json")
 ### Running multiple tests
 
 In case you wish to run all the Loadmill tests in a given folder you can use the `runFolder` API.
-It will execute all the tests *synchronously* (using the `wait` option by default) unless a test has failed.
+It will execute all the tests **synchronously** (using the `wait` option by default) unless a test has failed.
 This API returns an array of the tests result:
  ```js
 loadmill.runFolder("/path/to/tests/folder")
@@ -98,6 +98,16 @@ If you want to wait for the full result you can use `wait` here as well:
 loadmill.runAsyncFunctional("./load-tests/api_test.json")
     .then(loadmill.wait)
     // -> {id: string, type: 'functional', passed: boolean, url: string}
+    .then(result => console.log(result));
+```
+
+In case you wish to run several functional tests in a given folder you can use the `runFunctionalFolder` API.
+It will execute all the tests in the folder **synchronously** unless a test has failed.
+This API returns an array of the tests result:
+```js
+loadmill.runFunctionalFolder("./path/to/tests/folder")
+    .then(loadmill.wait)
+    // -> [{id: string, type: 'load', passed: boolean, url: string}]
     .then(result => console.log(result));
 ```
 

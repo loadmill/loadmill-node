@@ -35,9 +35,89 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
     const testingServer = "https://" + _testingServerHost;
 
+    async function _runFolderSync(listOfFiles: string[], execFunc: (...args) => Promise<string>, ...funcArgs) {
+
+        const results: Loadmill.TestResult[] = [];
+        let shouldContinue: boolean = true;
+
+        for (let file of listOfFiles)  {
+            if (shouldContinue) {
+                await execFunc(file, ...funcArgs)
+                    .then(_wait)
+                    .then((result) => {
+                        results.push(result);
+                        shouldContinue = result.passed;
+                    })
+            } else break;
+        }
+
+        return results;
+    }
+
+    async function _wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
+        let resolve, reject;
+
+        const testDef = typeof testDefOrId === 'string' ? {
+            id: testDefOrId,
+            type: TYPE_LOAD,
+        } : testDefOrId;
+
+        const apiUrl = getTestUrl(testDef,
+            testingServer + '/api/tests/', 'trials/', '');
+
+        const webUrl = getTestUrl(testDef,
+            testingServer + '/app/', 'functional/', 'test/');
+
+        const intervalId = setInterval(async () => {
+                try {
+                    const {body: {trialResult, result}} = await superagent.get(apiUrl)
+                        .auth(token, '');
+
+                    if (result || trialResult) {
+                        clearInterval(intervalId);
+
+                        const testResult = {
+                            ...testDef,
+                            url: webUrl,
+                            passed: testDef.type === TYPE_LOAD ?
+                                result === 'done' : isFunctionalPassed(trialResult),
+                        };
+
+                        if (callback) {
+                            callback(null, testResult);
+                        }
+                        else {
+                            resolve(testResult);
+                        }
+                    }
+                }
+                catch (err) {
+                    if (testDef.type === TYPE_FUNCTIONAL && err.status === 404) {
+                        // 404 for functional could be fine when async - keep going:
+                        return;
+                    }
+
+                    clearInterval(intervalId);
+
+                    if (callback) {
+                        callback(err, null);
+                    }
+                    else {
+                        reject(err);
+                    }
+                }
+            },
+            10 * 1000);
+
+        return callback ? null! as Promise<any> : new Promise((_resolve, _reject) => {
+            resolve = _resolve;
+            reject = _reject;
+        });
+    }
+
     async function _runFunctional(
-        async: boolean,
         config: Loadmill.Configuration,
+        async: boolean,
         paramsOrCallback: Loadmill.ParamsOrCallback,
         callback: Loadmill.Callback) {
 
@@ -105,80 +185,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             if (listOfFiles.length === 0) {
                 console.log(`No Loadmill test files were found at ${folderPath} - exiting...`);
             }
-            const results: Loadmill.TestResult[] = [];
-            let shouldContinue: boolean = true;
-            for (let file of listOfFiles)  {
-                if (shouldContinue) {
-                    await this.run(file, paramsOrCallback, callback)
-                        .then(this.wait)
-                        .then((result) => {
-                            results.push(result);
-                            shouldContinue = result.passed;
-                        })
-                } else break;
-            }
-            return results;
+            return _runFolderSync(listOfFiles, this.run, paramsOrCallback, callback);
+
         },
 
         wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
-            let resolve, reject;
-
-            const testDef = typeof testDefOrId === 'string' ? {
-                id: testDefOrId,
-                type: TYPE_LOAD,
-            } : testDefOrId;
-
-            const apiUrl = getTestUrl(testDef,
-                testingServer + '/api/tests/', 'trials/', '');
-
-            const webUrl = getTestUrl(testDef,
-                testingServer + '/app/', 'functional/', 'test/');
-
-            const intervalId = setInterval(async () => {
-                    try {
-                        const {body: {trialResult, result}} = await superagent.get(apiUrl)
-                            .auth(token, '');
-
-                        if (result || trialResult) {
-                            clearInterval(intervalId);
-
-                            const testResult = {
-                                ...testDef,
-                                url: webUrl,
-                                passed: testDef.type === TYPE_LOAD ?
-                                    result === 'done' : isFunctionalPassed(trialResult),
-                            };
-
-                            if (callback) {
-                                callback(null, testResult);
-                            }
-                            else {
-                                resolve(testResult);
-                            }
-                        }
-                    }
-                    catch (err) {
-                        if (testDef.type === TYPE_FUNCTIONAL && err.status === 404) {
-                            // 404 for functional could be fine when async - keep going:
-                            return;
-                        }
-
-                        clearInterval(intervalId);
-
-                        if (callback) {
-                            callback(err, null);
-                        }
-                        else {
-                            reject(err);
-                        }
-                    }
-                },
-                10 * 1000);
-
-            return callback ? null! as Promise<any> : new Promise((_resolve, _reject) => {
-                resolve = _resolve;
-                reject = _reject;
-            });
+           return _wait(testDefOrId, callback);
         },
 
         runFunctional(
@@ -186,7 +198,20 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             paramsOrCallback?: Loadmill.ParamsOrCallback,
             callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
 
-            return _runFunctional(false, config, paramsOrCallback, callback);
+            return _runFunctional(config, false, paramsOrCallback, callback);
+        },
+
+        async runFunctionalFolder(
+            folderPath: string,
+            paramsOrCallback?: Loadmill.ParamsOrCallback,
+            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestResult>> {
+
+            const listOfFiles = getJSONFilesInFolderRecursively(folderPath);
+            if (listOfFiles.length === 0) {
+                console.log(`No Loadmill test files were found at ${folderPath} - exiting...`);
+            }
+
+            return _runFolderSync(listOfFiles, _runFunctional, false, paramsOrCallback, callback);
         },
 
         runAsyncFunctional(
@@ -194,7 +219,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             paramsOrCallback?: Loadmill.ParamsOrCallback,
             callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
 
-            return _runFunctional(true, config, paramsOrCallback, callback);
+            return _runFunctional(config,true, paramsOrCallback, callback);
         },
     };
 }
