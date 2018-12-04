@@ -2,23 +2,21 @@ import * as fs from "fs";
 import * as path from "path";
 
 export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: string[] = []): string[] => {
-    if (fs.statSync(fileOrFolder).isFile()) {
+
+    let isFile = fs.statSync(fileOrFolder).isFile();
+
+    if (isFile && endsWith(fileOrFolder,'.json')) {
         filelist.push(fileOrFolder);
-    } else {
+    } else if (!isFile) {
         fs.readdirSync(fileOrFolder)
-            .map(file => {
-                let location: string = path.join(fileOrFolder, file);
-                return fs.statSync(location).isDirectory() ?
-                    getJSONFilesInFolderRecursively(location, filelist) :
-                    filelist.push(location)
-            });
+            .map(file =>
+                getJSONFilesInFolderRecursively(path.join(fileOrFolder, file), filelist));
     }
-    return filelist.filter(file => endsWith(file,'.json'));
+
+    return filelist;
 };
 
-const endsWith = (str, suffix) => {
-    return str.indexOf(suffix, str.length - suffix.length) !== -1;
-};
+const endsWith = (str, suffix) => str.indexOf(suffix, str.length - suffix.length) !== -1;
 
 export class Logger {
     private readonly verb: boolean = false;

@@ -35,20 +35,18 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
     const testingServer = "https://" + _testingServerHost;
 
-    async function _runFolderSync(listOfFiles: string[], execFunc: (...args) => Promise<string>, ...funcArgs) {
+    async function _runFolderSync(
+        listOfFiles: string[],
+        execFunc: (...args) => Promise<string>,
+        ...funcArgs) {
 
         const results: Loadmill.TestResult[] = [];
-        let shouldContinue: boolean = true;
 
         for (let file of listOfFiles)  {
-            if (shouldContinue) {
-                await execFunc(file, ...funcArgs)
-                    .then(_wait)
-                    .then((result) => {
-                        results.push(result);
-                        shouldContinue = result.passed;
-                    })
-            } else break;
+            let id = await execFunc(file, ...funcArgs);
+            let testResult = await _wait(id);
+            results.push(testResult);
+            if (!testResult.passed) break;
         }
 
         return results;
