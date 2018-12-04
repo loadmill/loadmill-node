@@ -106,7 +106,6 @@ It will execute all the tests in the folder **synchronously** unless a test has 
 This API returns an array of the tests result:
 ```js
 loadmill.runFunctionalFolder("./path/to/tests/folder")
-    .then(loadmill.wait)
     // -> [{id: string, type: 'load', passed: boolean, url: string}]
     .then(result => console.log(result));
 ```
