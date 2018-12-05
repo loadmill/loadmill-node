@@ -1,5 +1,6 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
+import {getJSONFilesInFolderRecursively, Logger} from './utils';
 
 program
     .usage("<config-file> -t <token> [options] [parameter=value...]")
@@ -21,7 +22,7 @@ program
 
 start()
     .catch(err => {
-        console.error(err);
+        console.error('\x1b[31m', err, '\x1b[0m');
         process.exit(2);
     });
 
@@ -35,11 +36,13 @@ async function start() {
         token,
         verbose,
         loadTest,
-        args: [file, ...rawParams]
+        args: [fileOrFolder, ...rawParams]
     } = program;
 
-    if (!file) {
-        validationFailed("No configuration file provided.");
+    const logger = new Logger(verbose);
+
+    if (!fileOrFolder) {
+        validationFailed("No configuration file or folder were provided.");
     }
 
     if (!token) {
@@ -52,8 +55,8 @@ async function start() {
         // verbose trumps quiet:
         quiet = false;
 
-        console.log("Input:", {
-            file,
+        logger.log("Input:", {
+            fileOrFolder,
             wait,
             bail,
             async,
@@ -65,46 +68,48 @@ async function start() {
         });
     }
 
-    let res, id;
     const loadmill = Loadmill({token});
 
-    if (loadTest) {
-        if (verbose) {
-            console.log("Launching load test...");
+    const listOfFiles = getJSONFilesInFolderRecursively(fileOrFolder);
+    if (listOfFiles.length === 0) {
+        logger.log(`No Loadmill test files were found at ${fileOrFolder} - exiting...`);
+    }
+
+    for (let file of listOfFiles)  {
+        let res, id;
+
+        if (loadTest) {
+            logger.verbose(`Launching ${file} as load test`);
+            id = await loadmill.run(file, parameters);
         }
-        id = await loadmill.run(file, parameters);
-    }
-    else {
-        if (verbose) {
-            console.log("Running functional test...");
+        else {
+            logger.verbose(`Running ${file} as functional test`);
+            const method = async ? 'runAsyncFunctional' : 'runFunctional';
+            res = await loadmill[method](file, parameters);
         }
 
-        const method = async ? 'runAsyncFunctional' : 'runFunctional';
-        res = await loadmill[method](file, parameters);
-    }
-
-    if (wait && (loadTest || async)) {
-        if (verbose) {
-            console.log("Waiting for test:", res ? res.id : id);
+        if (wait && (loadTest || async)) {
+            logger.verbose("Waiting for test:", res ? res.id : id);
+            res = await loadmill.wait(res || id);
         }
-        res = await loadmill.wait(res || id);
-    }
 
-    if (!quiet) {
-        console.log(res || id);
-    }
+        if (!quiet) {
+            logger.log(res || id);
+        }
 
-    if (res && res.passed != null && !res.passed) {
-        console.error("Test failed.");
+        if (res && res.passed != null && !res.passed) {
+            logger.error(`Test ${file} failed.`);
 
-        if (bail) {
-            process.exit(1);
+            if (bail) {
+                process.exit(1);
+            }
         }
     }
 }
 
 function validationFailed(...args) {
-    console.error(...args);
+    console.log('');
+    console.error('\x1b[31m', ... args, '\x1b[0m');
     program.outputHelp();
     process.exit(3);
 }

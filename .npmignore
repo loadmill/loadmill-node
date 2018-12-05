@@ -1,3 +1,4 @@
 .idea/
 node_modules/
 lib/loadmill.d.ts
+lib/utils.d.ts

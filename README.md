@@ -64,6 +64,17 @@ loadmill.run("./load-tests/long_test.json")
     .then(result => console.log(result));
 ```
 
+### Running multiple tests
+
+In case you wish to run all the Loadmill tests in a given folder you can use the `runFolder` API.
+It will execute all the tests **synchronously** (using the `wait` option by default) unless a test has failed.
+This API returns an array of the tests result:
+ ```js
+loadmill.runFolder("/path/to/tests/folder")
+    // -> [{id: string, type: 'load', passed: boolean, url: string}]
+        .then(results => console.log(results));
+```
+
 ### Functional Tests
 
 You may also use a test configuration to run a functional test (i.e. a single iteration of requests) - this is usually useful for testing your API for regressions after every new deployment.
@@ -90,6 +101,15 @@ loadmill.runAsyncFunctional("./load-tests/api_test.json")
     .then(result => console.log(result));
 ```
 
+In case you wish to run several functional tests in a given folder you can use the `runFunctionalFolder` API.
+It will execute all the tests in the folder **synchronously** unless a test has failed.
+This API returns an array of the tests result:
+```js
+loadmill.runFunctionalFolder("./path/to/tests/folder")
+    // -> [{id: string, type: 'functional', passed: boolean, url: string}]
+    .then(result => console.log(result));
+```
+
 ### Parameters
 
 You will usually want some part of your test to be _dynamic_, e.g. the host name of the tested server.
@@ -107,7 +127,7 @@ loadmill.runFunctional("./load-tests/parametrized_test.json", {host: "test.${par
 
 The loadmill Command Line Interface basically wraps the functions provided by the node module:
 ```
-loadmill <config-file> -t <token> [options] [parameter=value...]
+loadmill <config-file-or-folder> -t <token> [options] [parameter=value...]
 ```
 
 ### Functional Tests

@@ -18,7 +18,7 @@
   "author": "itaysabato <itay@loadmill.com>",
   "license": "Apache-2.0",
   "scripts": {
-    "prepare": "tsc && rm -f lib/loadmill.d.ts"
+    "prepare": "tsc && rm -f lib/loadmill.d.ts  lib/utils.d.ts"
   },
   "dependencies": {
     "commander": "^2.15.0",
