@@ -18,6 +18,7 @@ program
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
     .option("-v, --verbose", "Print out extra information for debugging.")
+    .option("-c, --local", "Execute functional test synchronously on local machine. This flag overrides load-test and async options")
     .parse(process.argv);
 
 start()
@@ -35,6 +36,7 @@ async function start() {
         quiet,
         token,
         verbose,
+        local,
         loadTest,
         args: [fileOrFolder, ...rawParams]
     } = program;
@@ -78,16 +80,19 @@ async function start() {
     for (let file of listOfFiles)  {
         let res, id;
 
-        if (loadTest) {
-            logger.verbose(`Launching ${file} as load test`);
-            id = await loadmill.run(file, parameters);
+        if(local) {
+            logger.verbose(`Running ${file} as functional test locally`);
+            res = await loadmill.runFunctionalLocally(file, parameters);
+        } else {
+            if (loadTest) {
+                logger.verbose(`Launching ${file} as load test`);
+                id = await loadmill.run(file, parameters);
+            } else {
+                logger.verbose(`Running ${file} as functional test`);
+                const method = async ? 'runAsyncFunctional' : 'runFunctional';
+                res = await loadmill[method](file, parameters);
+            }
         }
-        else {
-            logger.verbose(`Running ${file} as functional test`);
-            const method = async ? 'runAsyncFunctional' : 'runFunctional';
-            res = await loadmill[method](file, parameters);
-        }
-
         if (wait && (loadTest || async)) {
             logger.verbose("Waiting for test:", res ? res.id : id);
             res = await loadmill.wait(res || id);
