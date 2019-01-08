@@ -9,6 +9,7 @@
     "strictNullChecks": true,
     "moduleResolution": "Node",
     "noUnusedParameters": true,
+    "allowSyntheticDefaultImports": true,
     "lib": [
       "es5",
       "es2015.promise"
@@ -16,6 +17,7 @@
   },
   "files": [
     "./src/index.ts",
-    "./src/loadmill.ts"
+    "./src/loadmill.ts",
+    "./globals.d.ts"
   ]
 }

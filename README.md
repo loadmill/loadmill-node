@@ -84,7 +84,12 @@ loadmill.runFunctional("./load-tests/api_test.json")
     // -> {id: string, type: 'functional', passed: boolean, url: string}
     .then(result => console.log(result));
 ```
-
+If you wish to execute the tests from your local machine (rather than our SaaS infrastructure) you can use:
+```js
+loadmill.runFunctionalLocally("./load-tests/api_test.json")
+    // -> {type: 'functional', passed: boolean}
+    .then(result => console.log(result));
+```
 If your functional test is supposed to, or may, take longer than 25 seconds, you can use `runAsyncFunctional` instead:
 ```js
 loadmill.runAsyncFunctional("./load-tests/api_test.json")
@@ -105,8 +110,14 @@ In case you wish to run several functional tests in a given folder you can use t
 It will execute all the tests in the folder **synchronously** unless a test has failed.
 This API returns an array of the tests result:
 ```js
-loadmill.runFunctionalFolder("./path/to/tests/folder")
+loadmill.runFunctionalFolder("/path/to/tests/folder")
     // -> [{id: string, type: 'functional', passed: boolean, url: string}]
+    .then(result => console.log(result));
+```
+If you wish to execute all the tests in that folder from your local machine (rather than our SaaS infrastructure) you can use:
+```js
+loadmill.runFunctionalFolderLocally("/path/to/tests/folder")
+    // -> [{type: 'functional', passed: boolean}]
     .then(result => console.log(result));
 ```
 
@@ -138,6 +149,15 @@ loadmill test.json --token DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
 
 Unless the `-q` option is set, the result JSON will be printed to the standard output.
+
+### Local Functional Tests
+
+You can also run *functional* tests from your local machine using the `-c` or `--local` flag
+```
+loadmill local-test.json --local --token DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
+```
+
+Using the `-c` or `--local` option will override other options like `--load-test` etc...
 
 ### Load Tests
 
@@ -177,3 +197,4 @@ Full list of command line options:
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).
 - `-v, --verbose` Print out extra information for debugging (trumps `-q`).
+- `-c, --local` Execute functional test synchronously on local machine. This flag overrides load-test and async options.

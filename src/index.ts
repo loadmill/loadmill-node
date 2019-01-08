@@ -1,6 +1,8 @@
+import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import {getJSONFilesInFolderRecursively} from './utils';
+import {getJSONFilesInFolderRecursively, isEmptyObj} from './utils';
+import {runFunctionalOnLocalhost} from 'loadmill-runner';
 
 export = Loadmill;
 
@@ -113,6 +115,30 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         });
     }
 
+    async function _runFunctionalLocally(
+        config: Loadmill.Configuration,
+        paramsOrCallback: Loadmill.ParamsOrCallback,
+        callback: Loadmill.Callback) {
+        return wrap(
+            async () => {
+                config = toConfig(config, paramsOrCallback);
+
+                config['async'] = false;
+
+                const trialRes = await runFunctionalOnLocalhost(config);
+
+                if (!isEmptyObj(trialRes.failures)) {
+                    console.error('\x1b[31m', 'Test failure response -', '\x1b[0m', `${JSON.stringify(trialRes)}`);
+                }
+                return {
+                    type: TYPE_FUNCTIONAL,
+                    passed: isFunctionalPassed(trialRes),
+                };
+            },
+            callback || paramsOrCallback
+        );
+    }
+
     async function _runFunctional(
         config: Loadmill.Configuration,
         async: boolean,
@@ -210,6 +236,25 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             }
 
             return _runFolderSync(listOfFiles, _runFunctional, false, paramsOrCallback, callback);
+        },
+
+        async runFunctionalLocally(config: Loadmill.Configuration,
+                                   paramsOrCallback?: Loadmill.ParamsOrCallback,
+                                   callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
+            return _runFunctionalLocally(config, paramsOrCallback, callback);
+        },
+
+        async runFunctionalFolderLocally(
+            folderPath: string,
+            paramsOrCallback?: Loadmill.ParamsOrCallback,
+            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestResult>> {
+
+            const listOfFiles = getJSONFilesInFolderRecursively(folderPath);
+            if (listOfFiles.length === 0) {
+                console.log(`No Loadmill test files were found at ${folderPath} - exiting...`);
+            }
+
+            return _runFolderSync(listOfFiles, _runFunctionalLocally, paramsOrCallback, callback);
         },
 
         runAsyncFunctional(
