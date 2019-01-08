@@ -84,7 +84,7 @@ loadmill.runFunctional("./load-tests/api_test.json")
     // -> {id: string, type: 'functional', passed: boolean, url: string}
     .then(result => console.log(result));
 ```
-Or if you wish to execute the tests from you local server (rather than our SaaS infrastructure) you can use:
+If you wish to execute the tests from your local machine (rather than our SaaS infrastructure) you can use:
 ```js
 loadmill.runFunctionalLocally("./load-tests/api_test.json")
     // -> {type: 'functional', passed: boolean}
@@ -114,7 +114,7 @@ loadmill.runFunctionalFolder("/path/to/tests/folder")
     // -> [{id: string, type: 'functional', passed: boolean, url: string}]
     .then(result => console.log(result));
 ```
-Or if you wish to execute all the tests in that folder from you local server (rather than our SaaS infrastructure) you can use:
+If you wish to execute all the tests in that folder from your local machine (rather than our SaaS infrastructure) you can use:
 ```js
 loadmill.runFunctionalFolderLocally("/path/to/tests/folder")
     // -> [{type: 'functional', passed: boolean}]
