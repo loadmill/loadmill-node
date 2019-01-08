@@ -47,7 +47,13 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         for (let file of listOfFiles)  {
             let res = await execFunc(file, ...funcArgs);
-            let testResult = isString(res) ? await _wait(res) : {url: LOCAL, passed: res.passed} as Loadmill.TestResult;
+            console.log(res);
+            let testResult;
+            if (!isString(res) && !res.id) { // obj but without id -> local test
+                testResult = {url: LOCAL, passed: res.passed} as Loadmill.TestResult;
+            } else { // obj with id -> functional test. id as string -> load test
+                testResult = await _wait(res);
+            }
             results.push(testResult);
             if (!testResult.passed) break;
         }
