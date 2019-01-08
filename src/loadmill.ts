@@ -18,7 +18,7 @@ program
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
     .option("-v, --verbose", "Print out extra information for debugging.")
-    .option("-c, --local", "Execute functional test synchronously on local machine. This flag overrides load-test and async options")
+    .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test and async options")
     .parse(process.argv);
 
 start()

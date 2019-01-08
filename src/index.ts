@@ -128,14 +128,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const trialRes = await runFunctionalOnLocalhost(config);
 
                 if (!isEmptyObj(trialRes.failures)) {
-                    throw Error(JSON.stringify(trialRes));
+                    console.error('\x1b[31m', 'Test failure response -', '\x1b[0m', `${JSON.stringify(trialRes)}`);
                 }
-                else {
-                    return {
-                        type: TYPE_FUNCTIONAL,
-                        passed: isFunctionalPassed(trialRes),
-                    };
-                }
+                return {
+                    type: TYPE_FUNCTIONAL,
+                    passed: isFunctionalPassed(trialRes),
+                };
             },
             callback || paramsOrCallback
         );
