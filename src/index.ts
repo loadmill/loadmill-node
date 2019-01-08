@@ -1,7 +1,7 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import {getJSONFilesInFolderRecursively, isEmptyObj} from './utils';
+import {getJSONFilesInFolderRecursively, isEmptyObj, isString} from './utils';
 import {runFunctionalOnLocalhost} from 'loadmill-runner';
 
 export = Loadmill;
@@ -46,8 +46,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const results: Loadmill.TestResult[] = [];
 
         for (let file of listOfFiles)  {
-            let {id, passed} = await execFunc(file, ...funcArgs);
-            let testResult = id ? await _wait(id) : {url: LOCAL, passed} as Loadmill.TestResult;
+            let res = await execFunc(file, ...funcArgs);
+            let testResult = isString(res) ? await _wait(res) : {url: LOCAL, passed: res.passed} as Loadmill.TestResult;
             results.push(testResult);
             if (!testResult.passed) break;
         }
