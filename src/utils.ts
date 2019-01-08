@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import isEmpty = require('lodash/isEmpty');
-import isString = require('lodash/isString');
+import isAString = require('lodash/isString');
 
 export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: string[] = []): string[] => {
 
@@ -21,7 +21,7 @@ export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: 
 const endsWith = (str, suffix) => str.indexOf(suffix, str.length - suffix.length) !== -1;
 
 export const isEmptyObj = (obj) => isEmpty(obj);
-export const isString = (obj) => isString(obj);
+export const isString = (obj) => isAString(obj);
 
 export class Logger {
     private readonly verb: boolean = false;
