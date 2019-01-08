@@ -28,6 +28,7 @@ namespace Loadmill {
 
 const TYPE_LOAD = 'load';
 const TYPE_FUNCTIONAL = 'functional';
+const LOCAL = 'local';
 
 function Loadmill(options: Loadmill.LoadmillOptions) {
     const {
@@ -39,14 +40,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
     async function _runFolderSync(
         listOfFiles: string[],
-        execFunc: (...args) => Promise<string>,
+        execFunc: (...args) => Promise<any>,
         ...funcArgs) {
 
         const results: Loadmill.TestResult[] = [];
 
         for (let file of listOfFiles)  {
-            let id = await execFunc(file, ...funcArgs);
-            let testResult = await _wait(id);
+            let {id, passed} = await execFunc(file, ...funcArgs);
+            let testResult = id ? await _wait(id) : {url: LOCAL, passed} as Loadmill.TestResult;
             results.push(testResult);
             if (!testResult.passed) break;
         }
