@@ -1,7 +1,7 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import {getJSONFilesInFolderRecursively, isEmptyObj} from './utils';
+import {getJSONFilesInFolderRecursively, isEmptyObj, isString} from './utils';
 import {runFunctionalOnLocalhost} from 'loadmill-runner';
 
 export = Loadmill;
@@ -28,6 +28,7 @@ namespace Loadmill {
 
 const TYPE_LOAD = 'load';
 const TYPE_FUNCTIONAL = 'functional';
+const LOCAL = 'local';
 
 function Loadmill(options: Loadmill.LoadmillOptions) {
     const {
@@ -39,14 +40,19 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
     async function _runFolderSync(
         listOfFiles: string[],
-        execFunc: (...args) => Promise<string>,
+        execFunc: (...args) => Promise<any>,
         ...funcArgs) {
 
         const results: Loadmill.TestResult[] = [];
 
         for (let file of listOfFiles)  {
-            let id = await execFunc(file, ...funcArgs);
-            let testResult = await _wait(id);
+            let res = await execFunc(file, ...funcArgs);
+            let testResult;
+            if (!isString(res) && !res.id) { // obj but without id -> local test
+                testResult = {url: LOCAL, passed: res.passed} as Loadmill.TestResult;
+            } else { // obj with id -> functional test. id as string -> load test
+                testResult = await _wait(res);
+            }
             results.push(testResult);
             if (!testResult.passed) break;
         }
