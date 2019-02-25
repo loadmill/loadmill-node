@@ -1,7 +1,7 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import {getJSONFilesInFolderRecursively, isEmptyObj, isString} from './utils';
+import {getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintAssertionErrors} from './utils';
 import {runFunctionalOnLocalhost} from 'loadmill-runner';
 
 export = Loadmill;
@@ -24,6 +24,8 @@ namespace Loadmill {
     export type Configuration = object | string;
     export type ParamsOrCallback = object | Callback;
     export type Callback = {(err: Error | null, result: any): void} | undefined;
+    export type Histogram = {[reason: string]: number};
+    export type TestFailures = {[reason: string]: {[histogram: string]: Histogram}}
 }
 
 const TYPE_LOAD = 'load';
@@ -134,8 +136,11 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const trialRes = await runFunctionalOnLocalhost(config);
 
                 if (!isEmptyObj(trialRes.failures)) {
-                    console.error('\x1b[31m', 'Test failure response -', '\x1b[0m', `${JSON.stringify(trialRes)}`);
+                    console.error('\x1b[31m', 'Test failure response -', '\x1b[0m',
+                        `${JSON.stringify(trialRes, null, 4)}`);
+                    checkAndPrintAssertionErrors(trialRes);
                 }
+
                 return {
                     type: TYPE_FUNCTIONAL,
                     passed: isFunctionalPassed(trialRes),
