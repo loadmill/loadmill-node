@@ -34,14 +34,19 @@ const getAssertionErrors = (testResults) => {
 export const checkAndPrintAssertionErrors = (trialRes) => {
     let assertionErrorsPerRequest = getAssertionErrors(trialRes);
     if (!isEmptyObj(assertionErrorsPerRequest)) {
-        console.error('\x1b[31m', 'Test assertions failures -', '\x1b[0m'); // ,`${JSON.stringify(assertionErrors, null, 4)}`);
+        console.error('\x1b[31m', 'Test failures -', '\x1b[0m');
 
         for (let requestIndex in assertionErrorsPerRequest) {
             let request = trialRes.resolvedRequests[requestIndex];
-            let description = request.description || requestIndex
-                + " - " + request.method + " " + request.url;
+            let description = request.description || requestIndex;
 
-            console.log("In request", description);
+            if (assertionErrorsPerRequest[requestIndex].length == 0) {
+                // If there was a failure but no assertion failed this means the request itself failed
+                console.log(`Failed request "${description}" - ${request.method} ${request.url}`);
+                console.log(`Status: ${request.response.status} ${request.response.statusText}`);
+            } else {
+                console.log(`Assertion errors in request "${description}" - ${request.method} ${request.url}`);
+            }
 
             for (let error of assertionErrorsPerRequest[requestIndex]) {
                 const parameter = error.check;
