@@ -43,7 +43,15 @@ export const checkAndPrintAssertionErrors = (trialRes) => {
             if (assertionErrorsPerRequest[requestIndex].length == 0) {
                 // If there was a failure but no assertion failed this means the request itself failed
                 console.log(`Failed request "${description}" - ${request.method} ${request.url}`);
-                console.log(`Status: ${request.response.status} ${request.response.statusText}`);
+                if (request.response) {
+                    console.log(`Status: ${request.response.status} ${request.response.statusText}`);
+                }
+
+                let histogram = trialRes.failures[requestIndex].histogram;
+                for (let errorKey in histogram) {
+                    console.log(`Error: ${errorKey}`);
+                }
+
             } else {
                 console.log(`Assertion errors in request "${description}" - ${request.method} ${request.url}`);
             }
