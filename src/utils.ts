@@ -42,18 +42,18 @@ export const checkAndPrintAssertionErrors = (trialRes) => {
 
             if (assertionErrorsPerRequest[requestIndex].length == 0) {
                 // If there was a failure but no assertion failed this means the request itself failed
-                console.log(`Failed request "${description}" - ${request.method} ${request.url}`);
+                console.error(`Failed request "${description}" - ${request.method} ${request.url}`);
                 if (request.response) {
-                    console.log(`Status: ${request.response.status} ${request.response.statusText}`);
+                    console.error(`Status: ${request.response.status} ${request.response.statusText}`);
                 }
 
                 let histogram = trialRes.failures[requestIndex].histogram;
                 for (let errorKey in histogram) {
-                    console.log(`Error: ${errorKey}`);
+                    console.error(`Error: ${errorKey}`);
                 }
 
             } else {
-                console.log(`Assertion errors in request "${description}" - ${request.method} ${request.url}`);
+                console.error(`Assertion errors in request "${description}" - ${request.method} ${request.url}`);
             }
 
             for (let error of assertionErrorsPerRequest[requestIndex]) {
@@ -74,7 +74,7 @@ export const checkAndPrintAssertionErrors = (trialRes) => {
                     assertionMismatch = `match "${error.matches}"`
                 }
 
-                console.log(`Paramter "${parameter}" value is "${actualParameterValue}", expected to`, assertionMismatch);
+                console.error(`Paramter "${parameter}" value is "${actualParameterValue}", expected to`, assertionMismatch);
             }
         }
 
