@@ -2,7 +2,10 @@ import * as fs from "fs";
 import * as path from "path";
 import isEmpty = require('lodash/isEmpty');
 import isAString = require('lodash/isString');
+import findLast = require('lodash/findLast');
 import * as Loadmill from "./index";
+import {resolveExpression} from 'loadmill-runner';
+
 
 const getAssertionErrors = (testResults) => {
     const resolvedRequests = testResults.resolvedRequests;
@@ -31,6 +34,8 @@ const getAssertionErrors = (testResults) => {
     return failuresPerRequest;
 };
 
+const evaluteParameterExpresion = (expr, postParams) => resolveExpression(expr, postParams);
+
 export const checkAndPrintAssertionErrors = (trialRes) => {
     let assertionErrorsPerRequest = getAssertionErrors(trialRes);
     if (!isEmptyObj(assertionErrorsPerRequest)) {
@@ -57,24 +62,22 @@ export const checkAndPrintAssertionErrors = (trialRes) => {
             }
 
             for (let error of assertionErrorsPerRequest[requestIndex]) {
-                const parameter = error.check;
+                const parameterName = error.check;
 
-                let actualParameterValue; // can stay undefined in case the param is undefined
-                for (let paramWrapper of request.postParameters) {
-                    actualParameterValue = paramWrapper[parameter];
-                }
-
+                const actualParameter = findLast(request.postParameters, parameterName); // can stay undefined in case the param is undefined
+                const actualParameterValue = actualParameter ? actualParameter[parameterName] : undefined;
+            
                 // to do, eval the assertion expression to the actual string
                 let assertionMismatch = "be not empty or true"
                 if (error.equals) {
-                    assertionMismatch = `be "${error.equals}"`
+                    assertionMismatch = `be "${evaluteParameterExpresion(error.equals, request.postParameters)}"`
                 } else if (error.contains) {
-                    assertionMismatch = `contain "${error.contains}"`
+                    assertionMismatch = `contain "${evaluteParameterExpresion(error.contains, request.postParameters)}"`
                 } else if (error.matches) {
-                    assertionMismatch = `match "${error.matches}"`
+                    assertionMismatch = `match "${evaluteParameterExpresion(error.matches, request.postParameters)}"`
                 }
 
-                console.error(`Paramter "${parameter}" value is "${actualParameterValue}", expected to`, assertionMismatch);
+                console.error(`Paramter "${parameterName}" value is "${actualParameterValue}", expected to`, assertionMismatch);
             }
         }
 
