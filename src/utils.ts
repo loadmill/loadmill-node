@@ -5,6 +5,7 @@ import isAString = require('lodash/isString');
 import findLast = require('lodash/findLast');
 import * as Loadmill from "./index";
 import {resolveExpression} from 'loadmill-runner';
+import * as util from 'util';
 
 
 const getAssertionErrors = (testResults) => {
@@ -34,10 +35,25 @@ const getAssertionErrors = (testResults) => {
     return failuresPerRequest;
 };
 
+const getObjectAsString = obj => util.inspect(obj, { showHidden: false, depth: null, colors: true, compact: false } as any);
+
+
+const printRequest = (trialRes, assertionErrorsPerRequest, testArgs) => {
+    if (testArgs && testArgs.verbose) {
+        console.error('\x1b[31m', 'Test failure response -', '\x1b[0m', getObjectAsString(trialRes));
+    } else {
+        console.error('\x1b[31m', 'Test failed request -', '\x1b[0m');
+        for (let requestIndex in assertionErrorsPerRequest) {
+            console.error(getObjectAsString(trialRes.resolvedRequests[requestIndex])) ;
+        }
+    }
+}
+
 const evaluteParameterExpresion = (expr, postParams) => resolveExpression(expr, postParams);
 
-export const checkAndPrintAssertionErrors = (trialRes) => {
+export const checkAndPrintErrors = (trialRes, testArgs) => {
     let assertionErrorsPerRequest = getAssertionErrors(trialRes);
+    printRequest(trialRes, assertionErrorsPerRequest, testArgs);
     if (!isEmptyObj(assertionErrorsPerRequest)) {
         console.error('\x1b[31m', 'Test failures -', '\x1b[0m');
 

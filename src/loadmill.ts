@@ -82,7 +82,7 @@ async function start() {
 
         if(local) {
             logger.verbose(`Running ${file} as functional test locally`);
-            res = await loadmill.runFunctionalLocally(file, parameters);
+            res = await loadmill.runFunctionalLocally(file, parameters, undefined, {verbose});
         } else {
             if (loadTest) {
                 logger.verbose(`Launching ${file} as load test`);
