@@ -196,5 +196,5 @@ Full list of command line options:
 - `-w, --wait` Wait for the test to finish. Functional tests are automatically waited on unless async flag is turned on.
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).
-- `-v, --verbose` Print out extra information for debugging (trumps `-q`).
+- `-v, --verbose` Print out extra information for debugging (trumps `-q`). In case of an error will print the enitre test's requests otherwise will print only the failed request.
 - `-c, --local` Execute functional test synchronously on local machine. This flag overrides load-test and async options.

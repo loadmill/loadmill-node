@@ -1,7 +1,7 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import {getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintAssertionErrors} from './utils';
+import {getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors} from './utils';
 import {runFunctionalOnLocalhost} from 'loadmill-runner';
 
 export = Loadmill;
@@ -25,7 +25,8 @@ namespace Loadmill {
     export type ParamsOrCallback = object | Callback;
     export type Callback = {(err: Error | null, result: any): void} | undefined;
     export type Histogram = {[reason: string]: number};
-    export type TestFailures = {[reason: string]: {[histogram: string]: Histogram}}
+    export type TestFailures = {[reason: string]: {[histogram: string]: Histogram}};
+    export type Args = {verbose: boolean};
 }
 
 const TYPE_LOAD = 'load';
@@ -126,7 +127,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     async function _runFunctionalLocally(
         config: Loadmill.Configuration,
         paramsOrCallback: Loadmill.ParamsOrCallback,
-        callback: Loadmill.Callback) {
+        callback?: Loadmill.Callback,
+        testArgs?: Loadmill.Args) {
         return wrap(
             async () => {
                 config = toConfig(config, paramsOrCallback);
@@ -136,9 +138,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const trialRes = await runFunctionalOnLocalhost(config);
 
                 if (!isEmptyObj(trialRes.failures)) {
-                    console.error('\x1b[31m', 'Test failure response -', '\x1b[0m',
-                        `${JSON.stringify(trialRes, null, 4)}`);
-                    checkAndPrintAssertionErrors(trialRes);
+                  checkAndPrintErrors(trialRes, testArgs);
                 }
 
                 return {
@@ -251,8 +251,9 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         async runFunctionalLocally(config: Loadmill.Configuration,
                                    paramsOrCallback?: Loadmill.ParamsOrCallback,
-                                   callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
-            return _runFunctionalLocally(config, paramsOrCallback, callback);
+                                   callback?: Loadmill.Callback,
+                                   testArgs?: Loadmill.Args): Promise<Loadmill.TestResult> {
+            return _runFunctionalLocally(config, paramsOrCallback, callback, testArgs);
         },
 
         async runFunctionalFolderLocally(
