@@ -197,4 +197,5 @@ Full list of command line options:
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).
 - `-v, --verbose` Print out extra information for debugging (trumps `-q`). In case of an error will print the entire test's requests otherwise will print only the failed request.
+- `--colors` Print test results in color.
 - `-c, --local` Execute functional test synchronously on local machine. This flag overrides load-test and async options.
