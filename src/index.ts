@@ -1,7 +1,7 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import {getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors} from './utils';
+import {getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, Logger} from './utils';
 import {runFunctionalOnLocalhost} from 'loadmill-runner';
 
 export = Loadmill;
@@ -26,7 +26,7 @@ namespace Loadmill {
     export type Callback = {(err: Error | null, result: any): void} | undefined;
     export type Histogram = {[reason: string]: number};
     export type TestFailures = {[reason: string]: {[histogram: string]: Histogram}};
-    export type Args = {verbose: boolean};
+    export type Args = {verbose: boolean, colors?: boolean};
 }
 
 const TYPE_LOAD = 'load';
@@ -131,6 +131,10 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         testArgs?: Loadmill.Args) {
         return wrap(
             async () => {
+                const verbose = testArgs && testArgs.verbose ? testArgs.verbose : false;
+                const colors = testArgs && testArgs.colors ? testArgs.colors : false;
+                const logger = new Logger(verbose, colors);
+
                 config = toConfig(config, paramsOrCallback);
 
                 config['async'] = false;
@@ -138,7 +142,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const trialRes = await runFunctionalOnLocalhost(config);
 
                 if (!isEmptyObj(trialRes.failures)) {
-                  checkAndPrintErrors(trialRes, testArgs);
+                  checkAndPrintErrors(trialRes, testArgs, logger);
                 }
 
                 return {

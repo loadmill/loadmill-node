@@ -18,12 +18,13 @@ program
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
     .option("-v, --verbose", "Print out extra information for debugging.")
+    .option("--colors", "Print test results in color")
     .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test and async options")
     .parse(process.argv);
 
 start()
     .catch(err => {
-        console.error('\x1b[31m', err, '\x1b[0m');
+        console.error(err);
         process.exit(2);
     });
 
@@ -36,12 +37,13 @@ async function start() {
         quiet,
         token,
         verbose,
+        colors,
         local,
         loadTest,
         args: [fileOrFolder, ...rawParams]
     } = program;
 
-    const logger = new Logger(verbose);
+    const logger = new Logger(verbose, colors);
 
     if (!fileOrFolder) {
         validationFailed("No configuration file or folder were provided.");
@@ -82,7 +84,7 @@ async function start() {
 
         if(local) {
             logger.verbose(`Running ${file} as functional test locally`);
-            res = await loadmill.runFunctionalLocally(file, parameters, undefined, {verbose});
+            res = await loadmill.runFunctionalLocally(file, parameters, undefined, {verbose, colors});
         } else {
             if (loadTest) {
                 logger.verbose(`Launching ${file} as load test`);
@@ -114,7 +116,7 @@ async function start() {
 
 function validationFailed(...args) {
     console.log('');
-    console.error('\x1b[31m', ... args, '\x1b[0m');
+    console.error(... args);
     program.outputHelp();
     process.exit(3);
 }

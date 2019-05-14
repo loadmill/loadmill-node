@@ -35,27 +35,34 @@ const getAssertionErrors = (testResults) => {
     return failuresPerRequest;
 };
 
-const getObjectAsString = obj => util.inspect(obj, { showHidden: false, depth: null, colors: true, compact: false } as any);
+const getObjectAsString = (obj, colors) => {
+    // trim response body to length of 255
+    if (obj.response && obj.response.text && obj.response.text.length > 255) {
+        obj.response.text = obj.response.text.substring(0, 255) + ' [trimmed]'
+    }
+    return util.inspect(obj, { showHidden: false, depth: null, colors: colors, compact: false } as any);
+}
 
 
-const printRequest = (trialRes, assertionErrorsPerRequest, testArgs) => {
+const printRequest = (trialRes, assertionErrorsPerRequest, testArgs, logger) => {
     if (testArgs && testArgs.verbose) {
-        console.error('\x1b[31m', 'Test failure response -', '\x1b[0m', getObjectAsString(trialRes));
+        logger.error('Test failure response -');
+        logger.log(getObjectAsString(trialRes, testArgs.colors));
     } else {
-        console.error('\x1b[31m', 'Test failed request -', '\x1b[0m');
+        logger.error('Test failed request -');
         for (let requestIndex in assertionErrorsPerRequest) {
-            console.error(getObjectAsString(trialRes.resolvedRequests[requestIndex])) ;
+            logger.log(getObjectAsString(trialRes.resolvedRequests[requestIndex], testArgs && testArgs.colors)) ;
         }
     }
 }
 
 const evaluteParameterExpresion = (expr, postParams) => resolveExpression(expr, postParams);
 
-export const checkAndPrintErrors = (trialRes, testArgs) => {
+export const checkAndPrintErrors = (trialRes, testArgs, logger) => {
     let assertionErrorsPerRequest = getAssertionErrors(trialRes);
-    printRequest(trialRes, assertionErrorsPerRequest, testArgs);
+    
     if (!isEmptyObj(assertionErrorsPerRequest)) {
-        console.error('\x1b[31m', 'Test failures -', '\x1b[0m');
+        logger.error('Test failed -');
 
         for (let requestIndex in assertionErrorsPerRequest) {
             let request = trialRes.resolvedRequests[requestIndex];
@@ -63,18 +70,18 @@ export const checkAndPrintErrors = (trialRes, testArgs) => {
 
             if (assertionErrorsPerRequest[requestIndex].length == 0) {
                 // If there was a failure but no assertion failed this means the request itself failed
-                console.error(`Failed request "${description}" - ${request.method} ${request.url}`);
+                logger.log(`Failed request "${description}" - ${request.method} ${request.url}`);
                 if (request.response) {
-                    console.error(`Status: ${request.response.status} ${request.response.statusText}`);
+                    logger.log(`Status: ${request.response.status} ${request.response.statusText}`);
                 }
 
                 let histogram = trialRes.failures[requestIndex].histogram;
                 for (let errorKey in histogram) {
-                    console.error(`Error: ${errorKey}`);
+                    logger.log(`Error: ${errorKey}`);
                 }
 
             } else {
-                console.error(`Assertion errors in request "${description}" - ${request.method} ${request.url}`);
+                logger.error(`Assertion errors in request "${description}" - ${request.method} ${request.url}`);
             }
 
             for (let error of assertionErrorsPerRequest[requestIndex]) {
@@ -93,11 +100,15 @@ export const checkAndPrintErrors = (trialRes, testArgs) => {
                     assertionMismatch = `match "${evaluteParameterExpresion(error.matches, request.postParameters)}"`
                 }
 
-                console.error(`Paramter "${parameterName}" value is "${actualParameterValue}", expected to`, assertionMismatch);
+                logger.log(`Paramter "${parameterName}" value is "${actualParameterValue}", expected to`, assertionMismatch);
             }
         }
 
     }
+
+    logger.log('\n');
+    printRequest(trialRes, assertionErrorsPerRequest, testArgs, logger);
+    logger.log('\n');
 };
 
 export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: string[] = []): string[] => {
@@ -122,12 +133,20 @@ export const isString = (obj) => isAString(obj);
 
 export class Logger {
     private readonly verb: boolean = false;
+    private readonly colors: boolean = false;
 
-    constructor(verbose: boolean) {
+    constructor(verbose: boolean, colors: boolean) {
         this.verb = verbose;
+        this.colors = colors;
     }
 
     log = (msg, ...args) => console.log(msg, ...args);
-    error = (err) => console.error('\x1b[31m', err, '\x1b[0m');
+    error = (err) => {
+        if (this.colors) {
+            console.error('\x1b[31m', err, '\x1b[0m')
+        } else {
+            console.error(err)
+        }
+    };
     verbose = (msg, ...args) => this.verb ? console.log(msg, ...args) : void (0);
 }
