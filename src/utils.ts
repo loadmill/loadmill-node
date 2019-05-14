@@ -100,7 +100,7 @@ export const checkAndPrintErrors = (trialRes, testArgs, logger) => {
                     assertionMismatch = `match "${evaluteParameterExpresion(error.matches, request.postParameters)}"`
                 }
 
-                logger.log(`Paramter "${parameterName}" value is "${actualParameterValue}", expected to`, assertionMismatch);
+                logger.log(`❌  Paramter "${parameterName}" value is "${actualParameterValue}", expected to`, assertionMismatch);
             }
         }
 
