@@ -51,7 +51,7 @@ const printRequest = (trialRes, assertionErrorsPerRequest, testArgs, logger) => 
     } else {
         logger.error('Test failed request -');
         for (let requestIndex in assertionErrorsPerRequest) {
-            logger.log(getObjectAsString(trialRes.resolvedRequests[requestIndex], testArgs.colors)) ;
+            logger.log(getObjectAsString(trialRes.resolvedRequests[requestIndex], testArgs && testArgs.colors)) ;
         }
     }
 }
