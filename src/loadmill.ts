@@ -105,7 +105,7 @@ async function start() {
         }
 
         if (res && res.passed != null && !res.passed) {
-            logger.error(`Test ${file} failed.`);
+            logger.error(`❌  Test ${file} failed.`);
 
             if (bail) {
                 process.exit(1);

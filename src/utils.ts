@@ -37,8 +37,8 @@ const getAssertionErrors = (testResults) => {
 
 const getObjectAsString = (obj, colors) => {
     // trim response body to length of 255
-    if (obj.response && obj.response.text && obj.response.text.length > 255) {
-        obj.response.text = obj.response.text.substring(0, 255) + ' [trimmed]'
+    if (obj.response && obj.response.text && obj.response.text.length > 1024) {
+        obj.response.text = obj.response.text.substring(0, 1024) + ' [trimmed]'
     }
     return util.inspect(obj, { showHidden: false, depth: null, colors: colors, compact: false } as any);
 }
@@ -100,7 +100,7 @@ export const checkAndPrintErrors = (trialRes, testArgs, logger) => {
                     assertionMismatch = `match "${evaluteParameterExpresion(error.matches, request.postParameters)}"`
                 }
 
-                logger.log(`Paramter "${parameterName}" value is "${actualParameterValue}", expected to`, assertionMismatch);
+                logger.log(`❌  Paramter "${parameterName}" value is "${actualParameterValue}", expected to`, assertionMismatch);
             }
         }
 
