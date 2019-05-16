@@ -143,9 +143,9 @@ export class Logger {
     log = (msg, ...args) => console.log(msg, ...args);
     error = (err) => {
         if (this.colors) {
-            console.error('\x1b[31m', err, '\x1b[0m')
+            console.log('\x1b[31m', err, '\x1b[0m')
         } else {
-            console.error(err)
+            console.log(err)
         }
     };
     verbose = (msg, ...args) => this.verb ? console.log(msg, ...args) : void (0);
