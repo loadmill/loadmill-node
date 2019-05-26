@@ -19,9 +19,10 @@ namespace Loadmill {
     export interface TestResult extends TestDef {
         url: string;
         passed: boolean;
+        descrption: string
     }
 
-    export type Configuration = object | string;
+    export type Configuration = object | string | any ; // todo: bad typescript
     export type ParamsOrCallback = object | Callback;
     export type Callback = {(err: Error | null, result: any): void} | undefined;
     export type Histogram = {[reason: string]: number};
@@ -134,6 +135,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const verbose = testArgs && testArgs.verbose ? testArgs.verbose : false;
                 const colors = testArgs && testArgs.colors ? testArgs.colors : false;
                 const logger = new Logger(verbose, colors);
+                const description = (config.meta && config.meta.description) || 'no-test-description';
 
                 config = toConfig(config, paramsOrCallback);
 
@@ -142,12 +144,13 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const trialRes = await runFunctionalOnLocalhost(config);
 
                 if (!isEmptyObj(trialRes.failures)) {
-                  checkAndPrintErrors(trialRes, testArgs, logger);
+                  checkAndPrintErrors(trialRes, testArgs, logger, description);
                 }
 
                 return {
                     type: TYPE_FUNCTIONAL,
                     passed: isFunctionalPassed(trialRes),
+                    description: description
                 };
             },
             callback || paramsOrCallback
@@ -162,6 +165,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         return wrap(
             async () => {
+                const description = (config.meta && config.meta.description) || 'no-test-description';
+
                 config = toConfig(config, paramsOrCallback);
 
                 config['async'] = async;
@@ -185,6 +190,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         type: TYPE_FUNCTIONAL,
                         url: `${testingServer}/app/functional/${id}`,
                         passed: async ? null : isFunctionalPassed(trialResult),
+                        description: description
                     };
                 }
             },

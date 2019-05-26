@@ -101,7 +101,7 @@ async function start() {
         }
 
         if (!quiet) {
-            logger.log(res || id);
+            logger.log(JSON.stringify(res, null, 4) || id);
         }
 
         if (res && res.passed != null && !res.passed) {

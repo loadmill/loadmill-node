@@ -58,11 +58,11 @@ const printRequest = (trialRes, assertionErrorsPerRequest, testArgs, logger) => 
 
 const evaluteParameterExpresion = (expr, postParams) => resolveExpression(expr, postParams);
 
-export const checkAndPrintErrors = (trialRes, testArgs, logger) => {
+export const checkAndPrintErrors = (trialRes, testArgs, logger, description) => {
     let assertionErrorsPerRequest = getAssertionErrors(trialRes);
     
     if (!isEmptyObj(assertionErrorsPerRequest)) {
-        logger.error('Test failed -');
+        logger.error('Test failed - ' + description);
 
         for (let requestIndex in assertionErrorsPerRequest) {
             let request = trialRes.resolvedRequests[requestIndex];
