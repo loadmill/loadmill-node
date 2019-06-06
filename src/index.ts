@@ -1,8 +1,8 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import {getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, Logger} from './utils';
-import {runFunctionalOnLocalhost} from 'loadmill-runner';
+import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, Logger } from './utils';
+import { runFunctionalOnLocalhost } from 'loadmill-runner';
 
 export = Loadmill;
 
@@ -16,18 +16,26 @@ namespace Loadmill {
         type: string;
     }
 
+    export interface TestSuiteDef {
+        id: string;
+    }
+
+    export interface TestSuiteResult {
+        id: string;
+    }
+
     export interface TestResult extends TestDef {
         url: string;
         passed: boolean;
         descrption: string
     }
 
-    export type Configuration = object | string | any ; // todo: bad typescript
+    export type Configuration = object | string | any; // todo: bad typescript
     export type ParamsOrCallback = object | Callback;
-    export type Callback = {(err: Error | null, result: any): void} | undefined;
-    export type Histogram = {[reason: string]: number};
-    export type TestFailures = {[reason: string]: {[histogram: string]: Histogram}};
-    export type Args = {verbose: boolean, colors?: boolean};
+    export type Callback = { (err: Error | null, result: any): void } | undefined;
+    export type Histogram = { [reason: string]: number };
+    export type TestFailures = { [reason: string]: { [histogram: string]: Histogram } };
+    export type Args = { verbose: boolean, colors?: boolean };
 }
 
 const TYPE_LOAD = 'load';
@@ -37,7 +45,7 @@ const LOCAL = 'local';
 function Loadmill(options: Loadmill.LoadmillOptions) {
     const {
         token,
-        _testingServerHost = "www.loadmill.com"
+        _testingServerHost = "localhost:4443"
     } = options as any;
 
     const testingServer = "https://" + _testingServerHost;
@@ -49,11 +57,11 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         const results: Loadmill.TestResult[] = [];
 
-        for (let file of listOfFiles)  {
+        for (let file of listOfFiles) {
             let res = await execFunc(file, ...funcArgs);
             let testResult;
             if (!isString(res) && !res.id) { // obj but without id -> local test
-                testResult = {url: LOCAL, passed: res.passed} as Loadmill.TestResult;
+                testResult = { url: LOCAL, passed: res.passed } as Loadmill.TestResult;
             } else { // obj with id -> functional test. id as string -> load test
                 testResult = await _wait(res);
             }
@@ -79,44 +87,44 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             testingServer + '/app/', 'functional/', 'test/');
 
         const intervalId = setInterval(async () => {
-                try {
-                    const {body: {trialResult, result}} = await superagent.get(apiUrl)
-                        .auth(token, '');
+            try {
+                const { body: { trialResult, result } } = await superagent.get(apiUrl)
+                    .auth(token, '');
 
-                    if (result || trialResult) {
-                        clearInterval(intervalId);
-
-                        const testResult = {
-                            ...testDef,
-                            url: webUrl,
-                            passed: testDef.type === TYPE_LOAD ?
-                                result === 'done' : isFunctionalPassed(trialResult),
-                        };
-
-                        if (callback) {
-                            callback(null, testResult);
-                        }
-                        else {
-                            resolve(testResult);
-                        }
-                    }
-                }
-                catch (err) {
-                    if (testDef.type === TYPE_FUNCTIONAL && err.status === 404) {
-                        // 404 for functional could be fine when async - keep going:
-                        return;
-                    }
-
+                if (result || trialResult) {
                     clearInterval(intervalId);
 
+                    const testResult = {
+                        ...testDef,
+                        url: webUrl,
+                        passed: testDef.type === TYPE_LOAD ?
+                            result === 'done' : isFunctionalPassed(trialResult),
+                    };
+
                     if (callback) {
-                        callback(err, null);
+                        callback(null, testResult);
                     }
                     else {
-                        reject(err);
+                        resolve(testResult);
                     }
                 }
-            },
+            }
+            catch (err) {
+                if (testDef.type === TYPE_FUNCTIONAL && err.status === 404) {
+                    // 404 for functional could be fine when async - keep going:
+                    return;
+                }
+
+                clearInterval(intervalId);
+
+                if (callback) {
+                    callback(err, null);
+                }
+                else {
+                    reject(err);
+                }
+            }
+        },
             10 * 1000);
 
         return callback ? null! as Promise<any> : new Promise((_resolve, _reject) => {
@@ -144,7 +152,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const trialRes = await runFunctionalOnLocalhost(config);
 
                 if (!isEmptyObj(trialRes.failures)) {
-                  checkAndPrintErrors(trialRes, testArgs, logger, description);
+                    checkAndPrintErrors(trialRes, testArgs, logger, description);
                 }
 
                 return {
@@ -198,6 +206,30 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         );
     }
 
+    async function _runTestSuite(
+        suite: Loadmill.TestSuiteDef,
+        paramsOrCallback: Loadmill.ParamsOrCallback,
+        callback: Loadmill.Callback) {
+
+        return wrap(
+            async () => {
+                const {
+                    body :{
+                        testSuiteRunId
+                    }
+                } = await superagent.post(`${testingServer}/api/test-suites/${suite.id}/run`)
+                    .send({})
+                    .auth(token, '');
+
+                    return {
+                        id: testSuiteRunId
+                    };
+
+            },
+            callback || paramsOrCallback
+        );
+    }
+
     return {
         run(
             config: Loadmill.Configuration,
@@ -208,7 +240,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 async () => {
                     config = toConfig(config, paramsOrCallback);
 
-                    const {body: {testId}} = await superagent.post(testingServer + "/api/tests")
+                    const { body: { testId } } = await superagent.post(testingServer + "/api/tests")
                         .send(config)
                         .auth(token, '');
 
@@ -235,7 +267,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         },
 
         wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
-           return _wait(testDefOrId, callback);
+            return _wait(testDefOrId, callback);
         },
 
         runFunctional(
@@ -260,9 +292,9 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         },
 
         async runFunctionalLocally(config: Loadmill.Configuration,
-                                   paramsOrCallback?: Loadmill.ParamsOrCallback,
-                                   callback?: Loadmill.Callback,
-                                   testArgs?: Loadmill.Args): Promise<Loadmill.TestResult> {
+            paramsOrCallback?: Loadmill.ParamsOrCallback,
+            callback?: Loadmill.Callback,
+            testArgs?: Loadmill.Args): Promise<Loadmill.TestResult> {
             return _runFunctionalLocally(config, paramsOrCallback, callback, testArgs);
         },
 
@@ -284,7 +316,16 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             paramsOrCallback?: Loadmill.ParamsOrCallback,
             callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
 
-            return _runFunctional(config,true, paramsOrCallback, callback);
+            return _runFunctional(config, true, paramsOrCallback, callback);
+        },
+
+        runTestSuite(
+            suiteId: string,
+            paramsOrCallback?: Loadmill.ParamsOrCallback,
+            callback?: Loadmill.Callback): Promise<Loadmill.TestSuiteResult> {
+
+            const suite = { id: suiteId };
+            return _runTestSuite(suite, paramsOrCallback, callback);
         },
     };
 }
@@ -293,7 +334,7 @@ function isFunctionalPassed(trialResult) {
     return !!trialResult && Object.keys(trialResult.failures || {}).length === 0;
 }
 
-function getTestUrl({id, type}: Loadmill.TestDef, prefix: string, funcSuffix: string, loadSuffix: string) {
+function getTestUrl({ id, type }: Loadmill.TestDef, prefix: string, funcSuffix: string, loadSuffix: string) {
     const suffix = type === TYPE_FUNCTIONAL ? funcSuffix : loadSuffix;
     return `${prefix}${suffix}${id}`
 }
