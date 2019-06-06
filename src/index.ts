@@ -45,7 +45,7 @@ const LOCAL = 'local';
 function Loadmill(options: Loadmill.LoadmillOptions) {
     const {
         token,
-        _testingServerHost = "localhost:4443"
+        _testingServerHost = process.env.LOADMILL_SERVER_HOST ||  "www.loadmill.com" 
     } = options as any;
 
     const testingServer = "https://" + _testingServerHost;
