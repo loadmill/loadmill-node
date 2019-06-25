@@ -124,7 +124,8 @@ loadmill.runFunctionalFolderLocally("/path/to/tests/folder")
 ### Test Suites
 
 You may also launch an existing test suite by supplying the suite id - this is usually useful for testing your API for regressions after every new deployment.
-Test suites are launched and (currently) not awaiting the result:
+Test suites are launched and not awaiting the results.
+You can explicitly wait for a test to finish using the `wait` function:
 ```js
 loadmill.runTestSuite("test-suite-uuid")
     // -> [{id: string}]
@@ -150,7 +151,7 @@ loadmill.runFunctional("./load-tests/parametrized_test.json", {host: "test.${par
 
 The loadmill Command Line Interface basically wraps the functions provided by the node module:
 ```
-loadmill <config-file-or-folder> -t <token> [options] [parameter=value...]
+loadmill <config-file-or-folder | test-suite-id> -t <token> [options] [parameter=value...]
 ```
 
 ### Functional Tests
@@ -192,7 +193,9 @@ You may launch a test suite by setting the `-s` or `--test-suite` option:
 loadmill test-suite-id --test-suite -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
 
-The test suite will be launched and its unique identifier will be printed to the standard output.
+The test suite will be launched and its unique identifier will be printed to the standard output. You may alternatively
+set the `-w` or `--wait` option in order to wait for the load test to finish, in which case only the result JSON will be
+printed out at the end
 
 ### Exit Status
 

@@ -1,11 +1,11 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
-import { getJSONFilesInFolderRecursively, Logger, isUUID } from './utils';
+import { getJSONFilesInFolderRecursively, Logger, isUUID, getObjectAsString } from './utils';
 
 program
     .usage("<config-file-or-folder | testSuiteId> -t <token> [options] [parameter=value...]")
     .description(
-        "Run a load test or a functional test on loadmill.com.\n  " +
+        "Run a load test or a test suite on loadmill.com.\n  " +
         "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80'.\n\n  " +
         "Learn more at https://www.npmjs.com/package/loadmill#cli"
     )
@@ -76,10 +76,30 @@ async function start() {
         if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
             validationFailed("Test suite run flag is on but no valid test suite id was provided.");
         }
-        const res = await loadmill.runTestSuite(input, parameters);
+        let res;
+        let running = await loadmill.runTestSuite(input, parameters);
 
-        if (res && res.id) {
-            quiet ? logger.log(res.id) : void(0);
+        if (running && running.id) {
+
+            const testSuiteRunId = running.id;
+            
+            if (wait) {
+                logger.verbose("Waiting for test suite:", testSuiteRunId);
+                res = await loadmill.wait(running);
+            }
+            
+            if (!quiet) {
+                logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
+            }
+
+            if (res && res.passed != null && !res.passed) {
+                logger.error(`❌  Test suite with id ${input} failed.`);
+
+                if (bail) {
+                    process.exit(1);
+                }
+            }
+
         } else {
             logger.error(`❌  Couldn't run test suite with id ${input}.`);
 
