@@ -1,16 +1,17 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
-import {getJSONFilesInFolderRecursively, Logger} from './utils';
+import { getJSONFilesInFolderRecursively, Logger, isUUID, getObjectAsString } from './utils';
 
 program
-    .usage("<config-file> -t <token> [options] [parameter=value...]")
+    .usage("<config-file-or-folder | testSuiteId> -t <token> [options] [parameter=value...]")
     .description(
-        "Run a load test or a functional test on loadmill.com.\n  " +
+        "Run a load test or a test suite on loadmill.com.\n  " +
         "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80'.\n\n  " +
         "Learn more at https://www.npmjs.com/package/loadmill#cli"
     )
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
     .option("-l, --load-test", "Launch a load test. If not set, a functional test will run instead.")
+    .option("-s, --test-suite", "Launch a test suite. If set then a test suite id must be provided instead of config file.")
     .option("-a, --async", "Run the test asynchronously - affects only functional tests. " +
         "Use this if your test can take longer than 25 seconds (otherwise it will timeout).")
     .option("-w, --wait", "Wait for the test to finish. Functional tests are automatically waited on " +
@@ -40,14 +41,11 @@ async function start() {
         colors,
         local,
         loadTest,
-        args: [fileOrFolder, ...rawParams]
+        testSuite,
+        args: [input, ...rawParams]
     } = program;
 
     const logger = new Logger(verbose, colors);
-
-    if (!fileOrFolder) {
-        validationFailed("No configuration file or folder were provided.");
-    }
 
     if (!token) {
         validationFailed("No API token provided.");
@@ -59,8 +57,8 @@ async function start() {
         // verbose trumps quiet:
         quiet = false;
 
-        logger.log("Input:", {
-            fileOrFolder,
+        logger.log("Inputs:", {
+            input,
             wait,
             bail,
             async,
@@ -72,43 +70,87 @@ async function start() {
         });
     }
 
-    const loadmill = Loadmill({token});
+    const loadmill = Loadmill({ token });
 
-    const listOfFiles = getJSONFilesInFolderRecursively(fileOrFolder);
-    if (listOfFiles.length === 0) {
-        logger.log(`No Loadmill test files were found at ${fileOrFolder} - exiting...`);
-    }
+    if (testSuite) {
+        if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
+            validationFailed("Test suite run flag is on but no valid test suite id was provided.");
+        }
+        let res;
+        let running = await loadmill.runTestSuite(input, parameters);
 
-    for (let file of listOfFiles)  {
-        let res, id;
+        if (running && running.id) {
 
-        if(local) {
-            logger.verbose(`Running ${file} as functional test locally`);
-            res = await loadmill.runFunctionalLocally(file, parameters, undefined, {verbose, colors});
-        } else {
-            if (loadTest) {
-                logger.verbose(`Launching ${file} as load test`);
-                id = await loadmill.run(file, parameters);
-            } else {
-                logger.verbose(`Running ${file} as functional test`);
-                const method = async ? 'runAsyncFunctional' : 'runFunctional';
-                res = await loadmill[method](file, parameters);
+            const testSuiteRunId = running.id;
+            
+            if (wait) {
+                logger.verbose("Waiting for test suite:", testSuiteRunId);
+                res = await loadmill.wait(running);
             }
-        }
-        if (wait && (loadTest || async)) {
-            logger.verbose("Waiting for test:", res ? res.id : id);
-            res = await loadmill.wait(res || id);
-        }
+            
+            if (!quiet) {
+                logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
+            }
 
-        if (!quiet) {
-            logger.log(JSON.stringify(res, null, 4) || id);
-        }
+            if (res && res.passed != null && !res.passed) {
+                logger.error(`❌  Test suite with id ${input} failed.`);
 
-        if (res && res.passed != null && !res.passed) {
-            logger.error(`❌  Test ${file} failed.`);
+                if (bail) {
+                    process.exit(1);
+                }
+            }
+
+        } else {
+            logger.error(`❌  Couldn't run test suite with id ${input}.`);
 
             if (bail) {
                 process.exit(1);
+            }
+        }
+
+    } else { // if test suite flag is off then the input should be fileOrFolder
+
+        const fileOrFolder = input;
+        if (!fileOrFolder) {
+            validationFailed("No configuration file or folder were provided.");
+        }
+
+        const listOfFiles = getJSONFilesInFolderRecursively(fileOrFolder);
+        if (listOfFiles.length === 0) {
+            logger.log(`No Loadmill test files were found at ${fileOrFolder} - exiting...`);
+        }
+
+        for (let file of listOfFiles) {
+            let res, id;
+
+            if (local) {
+                logger.verbose(`Running ${file} as functional test locally`);
+                res = await loadmill.runFunctionalLocally(file, parameters, undefined, { verbose, colors });
+            } else {
+                if (loadTest) {
+                    logger.verbose(`Launching ${file} as load test`);
+                    id = await loadmill.run(file, parameters);
+                } else {
+                    logger.verbose(`Running ${file} as functional test`);
+                    const method = async ? 'runAsyncFunctional' : 'runFunctional';
+                    res = await loadmill[method](file, parameters);
+                }
+            }
+            if (wait && (loadTest || async)) {
+                logger.verbose("Waiting for test:", res ? res.id : id);
+                res = await loadmill.wait(res || id);
+            }
+
+            if (!quiet) {
+                logger.log(JSON.stringify(res, null, 4) || id);
+            }
+
+            if (res && res.passed != null && !res.passed) {
+                logger.error(`❌  Test ${file} failed.`);
+
+                if (bail) {
+                    process.exit(1);
+                }
             }
         }
     }
@@ -116,7 +158,7 @@ async function start() {
 
 function validationFailed(...args) {
     console.log('');
-    console.error(... args);
+    console.error(...args);
     program.outputHelp();
     process.exit(3);
 }

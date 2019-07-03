@@ -121,6 +121,17 @@ loadmill.runFunctionalFolderLocally("/path/to/tests/folder")
     .then(result => console.log(result));
 ```
 
+### Test Suites
+
+You may also launch an existing test suite by supplying the suite id - this is usually useful for testing your API for regressions after every new deployment.
+Test suites are launched and not awaiting the results.
+You can explicitly wait for a test to finish using the `wait` function:
+```js
+loadmill.runTestSuite("test-suite-uuid")
+    // -> [{id: string}]
+    .then(result => console.log(result));
+```
+
 ### Parameters
 
 You will usually want some part of your test to be _dynamic_, e.g. the host name of the tested server.
@@ -134,11 +145,13 @@ loadmill.run("./load-tests/parametrized_test.json", {host: "test.myapp.com", por
 loadmill.runFunctional("./load-tests/parametrized_test.json", {host: "test.${parentDomain}"});
 ```
 
+**NOTE** - currently `run test suite` option doesn't accept parameters.
+
 ## CLI
 
 The loadmill Command Line Interface basically wraps the functions provided by the node module:
 ```
-loadmill <config-file-or-folder> -t <token> [options] [parameter=value...]
+loadmill <config-file-or-folder | test-suite-id> -t <token> [options] [parameter=value...]
 ```
 
 ### Functional Tests
@@ -173,6 +186,17 @@ printed out at the end:
 loadmill test.json -lw -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
 
+### Test suites
+
+You may launch a test suite by setting the `-s` or `--test-suite` option:
+```
+loadmill test-suite-id --test-suite -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
+```
+
+The test suite will be launched and its unique identifier will be printed to the standard output. You may alternatively
+set the `-w` or `--wait` option in order to wait for the load test to finish, in which case only the result JSON will be
+printed out at the end
+
 ### Exit Status
 
 Unless the `-n` or `--no-bail` option is set, the CLI process will exit with a nonzero exit code if the test had not passed.
@@ -192,6 +216,7 @@ Full list of command line options:
 - `-h, --help` Output usage information.
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. If not set, a functional test will run instead.
+- `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file..
 - `-a, --async` Run the test asynchronously - affects only functional tests. Use this if your test can take longer than 25 seconds (otherwise it will timeout).
 - `-w, --wait` Wait for the test to finish. Functional tests are automatically waited on unless async flag is turned on.
 - `-n, --no-bail` Return exit code 0 even if test fails.

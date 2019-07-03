@@ -35,7 +35,7 @@ const getAssertionErrors = (testResults) => {
     return failuresPerRequest;
 };
 
-const getObjectAsString = (obj, colors) => {
+export const getObjectAsString = (obj, colors) => {
     // trim response body to length of 255
     if (obj.response && obj.response.text && obj.response.text.length > 1024) {
         obj.response.text = obj.response.text.substring(0, 1024) + ' [trimmed]'
@@ -130,7 +130,9 @@ const endsWith = (str, suffix) => str.indexOf(suffix, str.length - suffix.length
 
 export const isEmptyObj = (obj) => isEmpty(obj);
 export const isString = (obj) => isAString(obj);
-
+export const isUUID = s =>
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+  
 export class Logger {
     private readonly verb: boolean = false;
     private readonly colors: boolean = false;
