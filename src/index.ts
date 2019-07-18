@@ -174,6 +174,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         paramsOrCallback: Loadmill.ParamsOrCallback,
         callback: Loadmill.Callback) {
 
+        const overrideParameters = typeof paramsOrCallback !== 'function' ? paramsOrCallback : {};
         return wrap(
             async () => {
                 const {
@@ -181,7 +182,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         testSuiteRunId
                     }
                 } = await superagent.post(`${testingServer}/api/test-suites/${suite.id}/run`)
-                    .send({})
+                    .send({overrideParameters})
                     .auth(token, '');
 
                 return {id: testSuiteRunId, type: Loadmill.TYPES.SUITE};

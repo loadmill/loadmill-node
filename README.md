@@ -145,8 +145,6 @@ loadmill.run("./load-tests/parametrized_test.json", {host: "test.myapp.com", por
 loadmill.runFunctional("./load-tests/parametrized_test.json", {host: "test.${parentDomain}"});
 ```
 
-**NOTE** - currently `run test suite` option doesn't accept parameters.
-
 ## CLI
 
 The loadmill Command Line Interface basically wraps the functions provided by the node module:
