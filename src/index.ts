@@ -45,7 +45,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         } : testDefOrId;
 
         const apiUrl = getTestAPIUrl(testDef, testingServer);
-
         const webUrl = getTestWebUrl(testDef, testingServer);
 
         const intervalId = setInterval(async () => {
@@ -53,9 +52,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const { body } = await superagent.get(apiUrl)
                     .auth(token, '');
 
-                const { trialResult, result, isRunning } = body;
-
-                if (result || trialResult || isRunning === false) {
+                if (isTestInFinalState(body)) {
                     clearInterval(intervalId);
 
                     const testResult = {
@@ -182,10 +179,10 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         testSuiteRunId
                     }
                 } = await superagent.post(`${testingServer}/api/test-suites/${suite.id}/run`)
-                    .send({overrideParameters})
+                    .send({ overrideParameters })
                     .auth(token, '');
 
-                return {id: testSuiteRunId, type: Loadmill.TYPES.SUITE};
+                return { id: testSuiteRunId, type: Loadmill.TYPES.SUITE };
 
             },
             callback || paramsOrCallback
@@ -301,10 +298,17 @@ const isTestPassed = (body, type) => {
         case Loadmill.TYPES.FUNCTIONAL:
             return isFunctionalPassed(body.trialResult);
         case Loadmill.TYPES.SUITE:
-            return body.isPassed;
+            return body.status === "PASSED";
         default: //load
             return body.result === 'done';
     }
+}
+function isTestInFinalState(body) {
+    const { trialResult, result, status } = body;
+    return (
+        (result || trialResult === false) || // load or functional tests
+        (status && status !== "RUNNING") // test suites
+    );
 }
 
 function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
