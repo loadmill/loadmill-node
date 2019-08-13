@@ -167,19 +167,28 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     }
 
     async function _runTestSuite(
-        suite: Loadmill.TestSuiteDef,
+        suite: Loadmill.TestSuiteDef | string,
         paramsOrCallback: Loadmill.ParamsOrCallback,
         callback: Loadmill.Callback) {
 
         const overrideParameters = typeof paramsOrCallback !== 'function' ? paramsOrCallback : {};
+
+        let suiteId, additionalDescription;
+        if (typeof suite === 'string') { // need to depricate the option of string in 2.x version
+            suiteId = suite;
+        } else {
+            suiteId = suite.id;
+            additionalDescription = suite.additionalDescription;
+        }
+
         return wrap(
             async () => {
                 const {
                     body: {
                         testSuiteRunId
                     }
-                } = await superagent.post(`${testingServer}/api/test-suites/${suite.id}/run`)
-                    .send({ overrideParameters })
+                } = await superagent.post(`${testingServer}/api/test-suites/${suiteId}/run`)
+                    .send({ overrideParameters, additionalDescription })
                     .auth(token, '');
 
                 return { id: testSuiteRunId, type: Loadmill.TYPES.SUITE };
@@ -279,11 +288,10 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         },
 
         runTestSuite(
-            suiteId: string,
+            suite: string | Loadmill.TestSuiteDef,
             paramsOrCallback?: Loadmill.ParamsOrCallback,
             callback?: Loadmill.Callback): Promise<Loadmill.TestDef> {
 
-            const suite = { id: suiteId };
             return _runTestSuite(suite, paramsOrCallback, callback);
         },
     };
@@ -382,6 +390,7 @@ namespace Loadmill {
 
     export interface TestSuiteDef {
         id: string;
+        additionalDescription: string;
     }
 
     export interface TestResult extends TestDef {

@@ -125,11 +125,15 @@ loadmill.runFunctionalFolderLocally("/path/to/tests/folder")
 
 You may also launch an existing test suite by supplying the suite id - this is usually useful for testing your API for regressions after every new deployment.
 Test suites are launched and not awaiting the results.
+You can add an additional description at the end of the current suite's description by supplying the optional `additionalDescription` field.
 You can explicitly wait for a test to finish using the `wait` function:
 ```js
-loadmill.runTestSuite("test-suite-uuid")
-    // -> [{id: string}]
-    .then(result => console.log(result));
+loadmill.runTestSuite({
+    id: "test-suite-uuid",
+    additionalDescription: "description to add"
+})
+// -> [{id: string}]
+.then(result => console.log(result));
 ```
 
 ### Parameters
@@ -195,6 +199,8 @@ The test suite will be launched and its unique identifier will be printed to the
 set the `-w` or `--wait` option in order to wait for the load test to finish, in which case only the result JSON will be
 printed out at the end
 
+You can add an additional description at the end of the current suite's description by supplying the optional `--additional-description <description>` option.
+
 ### Exit Status
 
 Unless the `-n` or `--no-bail` option is set, the CLI process will exit with a nonzero exit code if the test had not passed.
@@ -214,7 +220,8 @@ Full list of command line options:
 - `-h, --help` Output usage information.
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. If not set, a functional test will run instead.
-- `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file..
+- `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
+- `--additional-description <description>` Add an aditional description at the end of the current suite's description - available only for test suites.
 - `-a, --async` Run the test asynchronously - affects only functional tests. Use this if your test can take longer than 25 seconds (otherwise it will timeout).
 - `-w, --wait` Wait for the test to finish. Functional tests are automatically waited on unless async flag is turned on.
 - `-n, --no-bail` Return exit code 0 even if test fails.

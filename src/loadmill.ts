@@ -12,6 +12,7 @@ program
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
     .option("-l, --load-test", "Launch a load test. If not set, a functional test will run instead.")
     .option("-s, --test-suite", "Launch a test suite. If set then a test suite id must be provided instead of config file.")
+    .option("--additional-description <description>", "Add an aditional description at the end of the current suite's description - available only for test suites.")
     .option("-a, --async", "Run the test asynchronously - affects only functional tests. " +
         "Use this if your test can take longer than 25 seconds (otherwise it will timeout).")
     .option("-w, --wait", "Wait for the test to finish. Functional tests are automatically waited on " +
@@ -42,6 +43,7 @@ async function start() {
         local,
         loadTest,
         testSuite,
+        additionalDescription,
         args: [input, ...rawParams]
     } = program;
 
@@ -66,6 +68,8 @@ async function start() {
             token,
             verbose,
             loadTest,
+            testSuite,
+            additionalDescription,
             parameters,
         });
     }
@@ -77,17 +81,18 @@ async function start() {
             validationFailed("Test suite run flag is on but no valid test suite id was provided.");
         }
         let res;
-        let running = await loadmill.runTestSuite(input, parameters);
+        const suite: Loadmill.TestSuiteDef = { id: input, additionalDescription };
+        let running = await loadmill.runTestSuite(suite, parameters);
 
         if (running && running.id) {
 
             const testSuiteRunId = running.id;
-            
+
             if (wait) {
                 logger.verbose("Waiting for test suite:", testSuiteRunId);
                 res = await loadmill.wait(running);
             }
-            
+
             if (!quiet) {
                 logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
             }

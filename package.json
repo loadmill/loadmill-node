@@ -1,13 +1,15 @@
 {
   "name": "loadmill",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A node.js module for running load tests and functional tests on loadmill.com",
   "keywords": [
     "loadmill",
     "load-testing",
     "node",
     "ci",
-    "functional-testing"
+    "functional-testing",
+    "test-suites",
+    "api-testing"
   ],
   "bin": {
     "loadmill": "bin/loadmill"
