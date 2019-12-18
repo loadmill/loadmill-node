@@ -82,35 +82,35 @@ async function start() {
         }
         let res;
         const suite: Loadmill.TestSuiteDef = { id: input, additionalDescription };
-        let running = await loadmill.runTestSuite(suite, parameters);
+        try {
+            let running = await loadmill.runTestSuite(suite, parameters);
 
-        if (running && running.id) {
+            if (running && running.id) {
 
-            const testSuiteRunId = running.id;
+                const testSuiteRunId = running.id;
 
-            if (wait) {
-                logger.verbose("Waiting for test suite:", testSuiteRunId);
-                res = await loadmill.wait(running);
-            }
-
-            if (!quiet) {
-                logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
-            }
-
-            if (res && res.passed != null && !res.passed) {
-                logger.error(`❌  Test suite with id ${input} failed.`);
-
-                if (bail) {
-                    process.exit(1);
+                if (wait) {
+                    logger.verbose("Waiting for test suite:", testSuiteRunId);
+                    res = await loadmill.wait(running);
                 }
-            }
 
-        } else {
-            logger.error(`❌  Couldn't run test suite with id ${input}.`);
+                if (!quiet) {
+                    logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
+                }
 
-            if (bail) {
-                process.exit(1);
+                if (res && res.passed != null && !res.passed) {
+                    testFailed(logger, `Test suite with id ${input} failed`, bail);
+                }
+
+            } else {
+                testFailed(logger, `Couldn't run test suite with id ${input}`, bail);
             }
+        } catch (e) {
+            if (verbose) {
+                logger.error(e);
+            }
+            const extInfo = e.response && e.response.res && e.response.res.text;
+            testFailed(logger, `Couldn't run test suite with id ${input}. ${extInfo ? extInfo : ''}`, bail);
         }
 
     } else { // if test suite flag is off then the input should be fileOrFolder
@@ -183,4 +183,12 @@ function toParams(rawParams: string[]) {
     });
 
     return parameters;
+}
+
+function testFailed(logger, msg, bail) {
+    logger.error(`❌ ${msg}.`);
+
+    if (bail) {
+        process.exit(1);
+    }
 }

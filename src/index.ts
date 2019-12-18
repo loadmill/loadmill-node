@@ -185,12 +185,17 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             async () => {
                 const {
                     body: {
-                        testSuiteRunId
+                        testSuiteRunId,
+                        err
                     }
                 } = await superagent.post(`${testingServer}/api/test-suites/${suiteId}/run`)
                     .send({ overrideParameters, additionalDescription })
                     .auth(token, '');
 
+                if (err || !testSuiteRunId) {
+                    console.error(err ? JSON.stringify(err): "The server encountered an error while handling the request");
+                    return;
+                }
                 return { id: testSuiteRunId, type: Loadmill.TYPES.SUITE };
 
             },
