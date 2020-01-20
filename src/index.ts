@@ -173,12 +173,13 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         const overrideParameters = typeof paramsOrCallback !== 'function' ? paramsOrCallback : {};
 
-        let suiteId, additionalDescription;
+        let suiteId, additionalDescription, labels;
         if (typeof suite === 'string') { // need to depricate the option of string in 2.x version
             suiteId = suite;
         } else {
             suiteId = suite.id;
             additionalDescription = suite.additionalDescription;
+            labels = suite.labels; 
         }
 
         return wrap(
@@ -189,7 +190,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         err
                     }
                 } = await superagent.post(`${testingServer}/api/test-suites/${suiteId}/run`)
-                    .send({ overrideParameters, additionalDescription })
+                    .send({ overrideParameters, additionalDescription, labels })
                     .auth(token, '');
 
                 if (err || !testSuiteRunId) {
@@ -396,6 +397,7 @@ namespace Loadmill {
     export interface TestSuiteDef {
         id: string;
         additionalDescription: string;
+        labels?: string[] | null;
     }
 
     export interface TestResult extends TestDef {

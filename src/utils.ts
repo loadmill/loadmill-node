@@ -4,7 +4,7 @@ import isEmpty = require('lodash/isEmpty');
 import isAString = require('lodash/isString');
 import findLast = require('lodash/findLast');
 import * as Loadmill from "./index";
-import {resolveExpression} from 'loadmill-runner';
+import { resolveExpression } from 'loadmill-runner';
 import * as util from 'util';
 
 
@@ -43,6 +43,9 @@ export const getObjectAsString = (obj, colors) => {
     return util.inspect(obj, { showHidden: false, depth: null, colors: colors, compact: false } as any);
 }
 
+export const convertStrToArr = (strWithCommas) => {
+    return typeof strWithCommas !== "string" ? null : strWithCommas.split(",");
+}
 
 const printRequest = (trialRes, assertionErrorsPerRequest, testArgs, logger) => {
     if (testArgs && testArgs.verbose) {
@@ -51,7 +54,7 @@ const printRequest = (trialRes, assertionErrorsPerRequest, testArgs, logger) => 
     } else {
         logger.error('Test failed request -');
         for (let requestIndex in assertionErrorsPerRequest) {
-            logger.log(getObjectAsString(trialRes.resolvedRequests[requestIndex], testArgs && testArgs.colors)) ;
+            logger.log(getObjectAsString(trialRes.resolvedRequests[requestIndex], testArgs && testArgs.colors));
         }
     }
 }
@@ -60,7 +63,7 @@ const evaluteParameterExpresion = (expr, postParams) => resolveExpression(expr, 
 
 export const checkAndPrintErrors = (trialRes, testArgs, logger, description) => {
     let assertionErrorsPerRequest = getAssertionErrors(trialRes);
-    
+
     if (!isEmptyObj(assertionErrorsPerRequest)) {
         logger.error('Test failed - ' + description);
 
@@ -89,7 +92,7 @@ export const checkAndPrintErrors = (trialRes, testArgs, logger, description) => 
 
                 const actualParameter = findLast(request.postParameters, parameterName); // can stay undefined in case the param is undefined
                 const actualParameterValue = actualParameter ? actualParameter[parameterName] : undefined;
-            
+
                 // to do, eval the assertion expression to the actual string
                 let assertionMismatch = "be not empty or true"
                 if (error.equals) {
@@ -132,7 +135,7 @@ export const isEmptyObj = (obj) => isEmpty(obj);
 export const isString = (obj) => isAString(obj);
 export const isUUID = s =>
     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-  
+
 export class Logger {
     private readonly verb: boolean = false;
     private readonly colors: boolean = false;

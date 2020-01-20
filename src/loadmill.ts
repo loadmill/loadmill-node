@@ -1,27 +1,24 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
-import { getJSONFilesInFolderRecursively, Logger, isUUID, getObjectAsString } from './utils';
+import { getJSONFilesInFolderRecursively, Logger, isUUID, getObjectAsString, convertStrToArr } from './utils';
 
 program
-    .usage("<config-file-or-folder | testSuiteId> -t <token> [options] [parameter=value...]")
+    .usage("<load-config-file-or-folder | testSuiteId> -t <token> [options] [parameter=value...]")
     .description(
         "Run a load test or a test suite on loadmill.com.\n  " +
         "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80'.\n\n  " +
         "Learn more at https://www.npmjs.com/package/loadmill#cli"
     )
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
-    .option("-l, --load-test", "Launch a load test. If not set, a functional test will run instead.")
+    .option("-l, --load-test", "Launch a load test.")
     .option("-s, --test-suite", "Launch a test suite. If set then a test suite id must be provided instead of config file.")
-    .option("--additional-description <description>", "Add an aditional description at the end of the current suite's description - available only for test suites.")
-    .option("-a, --async", "Run the test asynchronously - affects only functional tests. " +
-        "Use this if your test can take longer than 25 seconds (otherwise it will timeout).")
-    .option("-w, --wait", "Wait for the test to finish. Functional tests are automatically waited on " +
-        "unless async flag is turned on.")
+    .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
+    .option("--labels <labels>", "Add a comma separated string representing an array of labels (e.g. 'label1,label2'), in order to run flows by providing their assigned labels - available only for test suites.")
+    .option("-w, --wait", "Wait for the test to finish.")
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
     .option("-v, --verbose", "Print out extra information for debugging.")
     .option("--colors", "Print test results in color")
-    .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test and async options")
     .parse(process.argv);
 
 start()
@@ -31,7 +28,6 @@ start()
     });
 
 async function start() {
-
     let {
         wait,
         bail,
@@ -44,6 +40,7 @@ async function start() {
         loadTest,
         testSuite,
         additionalDescription,
+        labels,
         args: [input, ...rawParams]
     } = program;
 
@@ -70,6 +67,7 @@ async function start() {
             loadTest,
             testSuite,
             additionalDescription,
+            labels,
             parameters,
         });
     }
@@ -81,7 +79,7 @@ async function start() {
             validationFailed("Test suite run flag is on but no valid test suite id was provided.");
         }
         let res;
-        const suite: Loadmill.TestSuiteDef = { id: input, additionalDescription };
+        const suite: Loadmill.TestSuiteDef = { id: input, additionalDescription, labels: convertStrToArr(labels) };
         try {
             let running = await loadmill.runTestSuite(suite, parameters);
 
@@ -136,6 +134,7 @@ async function start() {
                     logger.verbose(`Launching ${file} as load test`);
                     id = await loadmill.run(file, parameters);
                 } else {
+                    // TODO: We need to change it
                     logger.verbose(`Running ${file} as functional test`);
                     const method = async ? 'runAsyncFunctional' : 'runFunctional';
                     res = await loadmill[method](file, parameters);
