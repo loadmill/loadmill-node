@@ -134,7 +134,6 @@ async function start() {
                     logger.verbose(`Launching ${file} as load test`);
                     id = await loadmill.run(file, parameters);
                 } else {
-                    // TODO: We need to change it
                     logger.verbose(`Running ${file} as functional test`);
                     const method = async ? 'runAsyncFunctional' : 'runFunctional';
                     res = await loadmill[method](file, parameters);
