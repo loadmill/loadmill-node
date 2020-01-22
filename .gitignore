@@ -1,6 +1,23 @@
-.idea/
+# dependencies:
 node_modules/
-lib/
-.vscode
-.DS_Store
+
+# compiled files:
+dist/
+
+# environment variables:
 .env
+
+# jetbrains folder:
+.idea/
+
+# vscode folder:
+.vscode/
+
+# npm log:
+npm-debug.log*
+newrelic_agent.log
+yarn-error.log
+package-lock.json
+
+# misc
+.DS_Store
