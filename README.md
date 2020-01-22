@@ -27,25 +27,30 @@ Using yarn:
 
 ## Usage
 
+### API Tokens
+In order to use the Loadmill REST API or our node module and CLI, you will need to generate an [API Token](https://docs.loadmill.com/integrations/api-tokens).
+
 ### Test Suites
 
 You may launch an existing test suite by supplying the suite id - this is usually useful for testing your API for regressions after every new deployment.
 Test suites are launched and not awaiting the results.
-You can add an additional description at the end of the current suite's description by supplying the optional `additionalDescription` field.
-You can also pass an array of labels in order to run flows by providing their assigned labels.
 
 ```js
 const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
 
 /**
- * @returns [{id: string}]
+ * @returns { id: 'uuid', type: 'test-suite' }
  */
-loadmill.runTestSuite({
+const result = await loadmill.runTestSuite({id: "test-suite-uuid"});
+```
+
+You can also extend the suite object:
+```js
+const result = await loadmill.runTestSuite({
     id: "test-suite-uuid",
-    additionalDescription: "description to add",
-    labels: ["label1", "label2"]
-})
-.then(result => console.log(result));
+    additionalDescription: "description to add", //optional
+    labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
+}
 ```
 
 ### Load tests
@@ -54,12 +59,9 @@ The following code runs a very simple load test that gets a single page from `ww
 ```js
 const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
 
-// You may also give a path to a valid JSON file instead:
-loadmill.run({requests: [{url: "www.myapp.com"}]}, (err, id) => {
-    if (!err) {
-        console.log("Load test started: " + id);
-    }
-});
+// You may also give a path to a valid Test Configuration JSON file instead:
+const id = await loadmill.run({requests: [{url: "www.myapp.com"}]});
+console.log("Load test started: " + id);
 ```
 
 ### Test Configuration
@@ -74,15 +76,19 @@ Read more about the configuration format [here](https://docs.loadmill.com/load-t
 Since load tests usually run for at least a few minutes, the loadmill client does not wait for them to finish by default.
 You can explicitly wait for a test to finish using the `wait` function:
  ```js
- /**
- * @returns {id: string, type: 'load', passed: boolean, url: string}
+/**
+ * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
  */
 loadmill.run("./load-tests/long_test.json")
     .then(loadmill.wait)
     .then(result => console.log(result));
+
+// promise with async/await
+const loadTestId = await loadmill.run({ requests: [{ url: "www.myapp.com" }] });
+const result = await loadmill.wait(loadTestId);
 ```
 
-### Using Promises
+### Promises vs Callbacks
 
 Every function that accepts a callback will return a promise instead if no callback is provided (and vice versa):
 ```js
@@ -92,9 +98,6 @@ loadmill.run("./load-tests/simple.json")
 ```
 
 ### Running multiple tests
-
-//// load tests right? "unless a test has failed" and then what??
-
 
 In case you wish to run all the Loadmill tests in a given folder you can use the `runFolder` API.
 It will execute all the tests **synchronously** (using the `wait` option by default) unless a test has failed.
@@ -135,9 +138,14 @@ The test suite will be launched and its unique identifier will be printed to the
 set the `-w` or `--wait` option in order to wait for the test-suite to finish, in which case only the result JSON will be
 printed out at the end
 
-You can add an additional description at the end of the current suite's description by supplying the optional `--additional-description <description>` option.
+You can add an additional description at the end of the current suite's description with the `--additional-description <description>` option.
 
-You can also add a comma separated string representing an array of labels (e.g. 'label1,label2'), in order to run flows by providing their assigned labels by supplying the optional `--labels <labels>` option.
+You can tell loadmill to run flows that are assigned to a specific label with the `--labels <labels>` option. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
+
+```
+loadmill <test-suite-id> --test-suite -t <token> --labels "label1,label2"
+```
+
 
 ### Load Tests
 
@@ -174,7 +182,7 @@ Full list of command line options:
 - `-l, --load-test` Launch a load test. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
-- `--labels <labels>`, Add a comma separated string representing an array of labels (e.g. 'label1,label2'), in order to run flows by providing their assigned labels - available only for test suites.)
+- `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
 - `-w, --wait` Wait for the test to finish. 
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).

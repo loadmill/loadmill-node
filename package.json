@@ -20,7 +20,8 @@
   "author": "itaysabato <itay@loadmill.com>",
   "license": "Apache-2.0",
   "scripts": {
-    "prepare": "tsc && rm -f lib/loadmill.d.ts  lib/utils.d.ts lib/polyfills.d.ts"
+    "prepare": "tsc && rm -f lib/loadmill.d.ts  lib/utils.d.ts lib/polyfills.d.ts",
+    "test": "mocha"
   },
   "dependencies": {
     "bluebird": "^3.4.7",
@@ -43,6 +44,7 @@
   },
   "devDependencies": {
     "@types/node": "^9.4.7",
-    "typescript": "^2.7.2"
+    "typescript": "^2.7.2",
+    "mocha": "^7.0.0"
   }
 }

@@ -13,7 +13,7 @@ program
     .option("-l, --load-test", "Launch a load test.")
     .option("-s, --test-suite", "Launch a test suite. If set then a test suite id must be provided instead of config file.")
     .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
-    .option("--labels <labels>", "Add a comma separated string representing an array of labels (e.g. 'label1,label2'), in order to run flows by providing their assigned labels - available only for test suites.")
+    .option("--labels <labels>", "Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').")
     .option("-w, --wait", "Wait for the test to finish.")
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
@@ -28,6 +28,7 @@ start()
     });
 
 async function start() {
+    
     let {
         wait,
         bail,
