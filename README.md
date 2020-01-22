@@ -1,8 +1,8 @@
 # Loadmill
 
 Users of [Loadmill](https://www.loadmill.com) can use this node module to: 
-1. Run load tests on loadmill.com.
-2. Run functional tests on loadmill.com.
+1. Run API tests on loadmill.com.
+2. Run load tests on loadmill.com.
 3. Do both programmatically or via [CLI](#cli).
 
 ## Installation
@@ -27,24 +27,68 @@ Using yarn:
 
 ## Usage
 
+### API Tokens
+In order to use the Loadmill REST API or our node module and CLI, you will need to generate an [API Token](https://docs.loadmill.com/integrations/api-tokens).
+
+### Test Suites
+
+You may launch an existing test suite by supplying the suite id - this is usually useful for testing your API for regressions after every new deployment.
+Test suites are launched and not awaiting the results.
+
+```js
+const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
+
+/**
+ * @returns { id: 'uuid', type: 'test-suite' }
+ */
+const result = await loadmill.runTestSuite({id: "test-suite-uuid"});
+```
+
+You can also extend the suite object:
+```js
+const result = await loadmill.runTestSuite({
+    id: "test-suite-uuid",
+    additionalDescription: "description to add", //optional
+    labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
+}
+```
+
+### Load tests
+
 The following code runs a very simple load test that gets a single page from `www.myapp.com` every second for one minute:
 ```js
 const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
 
-// You may also give a path to a valid JSON file instead:
-loadmill.run({requests: [{url: "www.myapp.com"}]}, (err, id) => {
-    if (!err) {
-        console.log("Load test started: " + id);
-    }
-});
+// You may also give a path to a valid Test Configuration JSON file instead:
+const id = await loadmill.run({requests: [{url: "www.myapp.com"}]});
+console.log("Load test started: " + id);
 ```
 
 ### Test Configuration
 
 The JSON test configuration may be exported from the loadmill test editor or from an old test run.
-Read more about the configuration format [here](https://docs.loadmill.com/test-scenarios/configuration-files).
 
-### Using Promises
+Read more about the configuration format [here](https://docs.loadmill.com/load-testing/working-with-the-test-editor/configuration-files).
+
+
+### Waiting for Tests
+
+Since load tests usually run for at least a few minutes, the loadmill client does not wait for them to finish by default.
+You can explicitly wait for a test to finish using the `wait` function:
+ ```js
+/**
+ * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
+ */
+loadmill.run("./load-tests/long_test.json")
+    .then(loadmill.wait)
+    .then(result => console.log(result));
+
+// promise with async/await
+const loadTestId = await loadmill.run({ requests: [{ url: "www.myapp.com" }] });
+const result = await loadmill.wait(loadTestId);
+```
+
+### Promises vs Callbacks
 
 Every function that accepts a callback will return a promise instead if no callback is provided (and vice versa):
 ```js
@@ -53,126 +97,55 @@ loadmill.run("./load-tests/simple.json")
     .catch(err => console.error("Something bad: ", err));
 ```
 
-### Waiting for Tests
-
-Since load tests usually run for at least a few minutes, the loadmill client does not wait for them to finish by default.
-You can explicitly wait for a test to finish using the `wait` function:
- ```js
-loadmill.run("./load-tests/long_test.json")
-    .then(loadmill.wait)
-    // -> {id: string, type: 'load', passed: boolean, url: string}
-    .then(result => console.log(result));
-```
-
 ### Running multiple tests
 
 In case you wish to run all the Loadmill tests in a given folder you can use the `runFolder` API.
 It will execute all the tests **synchronously** (using the `wait` option by default) unless a test has failed.
 This API returns an array of the tests result:
  ```js
+ /**
+ * @returns [{id: string, type: 'load', passed: boolean, url: string}]
+ */
 loadmill.runFolder("/path/to/tests/folder")
-    // -> [{id: string, type: 'load', passed: boolean, url: string}]
         .then(results => console.log(results));
-```
-
-### Functional Tests
-
-You may also use a test configuration to run a functional test (i.e. a single iteration of requests) - this is usually useful for testing your API for regressions after every new deployment.
-Functional tests are expected to be shorter and thus are awaited on by default:
-```js
-loadmill.runFunctional("./load-tests/api_test.json")
-    // -> {id: string, type: 'functional', passed: boolean, url: string}
-    .then(result => console.log(result));
-```
-If you wish to execute the tests from your local machine (rather than our SaaS infrastructure) you can use:
-```js
-loadmill.runFunctionalLocally("./load-tests/api_test.json")
-    // -> {type: 'functional', passed: boolean}
-    .then(result => console.log(result));
-```
-If your functional test is supposed to, or may, take longer than 25 seconds, you can use `runAsyncFunctional` instead:
-```js
-loadmill.runAsyncFunctional("./load-tests/api_test.json")
-    // -> {id: string, type: 'functional', passed: null, url: string}
-    .then(result => console.log(result));
-```
-
-Note that in this case the `passed` property is `null` since the promise resolves before the test is finished.
-If you want to wait for the full result you can use `wait` here as well:
-```js
-loadmill.runAsyncFunctional("./load-tests/api_test.json")
-    .then(loadmill.wait)
-    // -> {id: string, type: 'functional', passed: boolean, url: string}
-    .then(result => console.log(result));
-```
-
-In case you wish to run several functional tests in a given folder you can use the `runFunctionalFolder` API.
-It will execute all the tests in the folder **synchronously** unless a test has failed.
-This API returns an array of the tests result:
-```js
-loadmill.runFunctionalFolder("/path/to/tests/folder")
-    // -> [{id: string, type: 'functional', passed: boolean, url: string}]
-    .then(result => console.log(result));
-```
-If you wish to execute all the tests in that folder from your local machine (rather than our SaaS infrastructure) you can use:
-```js
-loadmill.runFunctionalFolderLocally("/path/to/tests/folder")
-    // -> [{type: 'functional', passed: boolean}]
-    .then(result => console.log(result));
-```
-
-### Test Suites
-
-You may also launch an existing test suite by supplying the suite id - this is usually useful for testing your API for regressions after every new deployment.
-Test suites are launched and not awaiting the results.
-You can add an additional description at the end of the current suite's description by supplying the optional `additionalDescription` field.
-You can explicitly wait for a test to finish using the `wait` function:
-```js
-loadmill.runTestSuite({
-    id: "test-suite-uuid",
-    additionalDescription: "description to add"
-})
-// -> [{id: string}]
-.then(result => console.log(result));
 ```
 
 ### Parameters
 
 You will usually want some part of your test to be _dynamic_, e.g. the host name of the tested server.
-With Loadmill, this is made easy by using [parameters](https://docs.loadmill.com/test-scenarios/parameters).
+With Loadmill, this is made easy by using [parameters](https://docs.loadmill.com/api-testing/test-suite-editor/parameters).
 You may set/override parameter defaults for a test by passing a hash mapping parameter names to values:
 ```js
 // Parameters may come before or instead of a callback:
 loadmill.run("./load-tests/parametrized_test.json", {host: "test.myapp.com", port: 4443}, (err, id) => {/*...*/});
-
-// You may also use predefined parameter values as well:
-loadmill.runFunctional("./load-tests/parametrized_test.json", {host: "test.${parentDomain}"});
 ```
 
 ## CLI
 
 The loadmill Command Line Interface basically wraps the functions provided by the node module:
 ```
-loadmill <config-file-or-folder | test-suite-id> -t <token> [options] [parameter=value...]
+loadmill <load-config-file-or-folder | test-suite-id> -t <token> [options] [parameter=value...]
 ```
 
-### Functional Tests
+### Test suites
 
-The default is to run a functional test:
+You may launch a test suite by setting the `-s` or `--test-suite` option:
 ```
-loadmill test.json --token DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
-```
-
-Unless the `-q` option is set, the result JSON will be printed to the standard output.
-
-### Local Functional Tests
-
-You can also run *functional* tests from your local machine using the `-c` or `--local` flag
-```
-loadmill local-test.json --local --token DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
+loadmill test-suite-id --test-suite -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
 
-Using the `-c` or `--local` option will override other options like `--load-test` etc...
+The test suite will be launched and its unique identifier will be printed to the standard output. You may alternatively
+set the `-w` or `--wait` option in order to wait for the test-suite to finish, in which case only the result JSON will be
+printed out at the end
+
+You can add an additional description at the end of the current suite's description with the `--additional-description <description>` option.
+
+You can tell loadmill to run flows that are assigned to a specific label with the `--labels <labels>` option. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
+
+```
+loadmill <test-suite-id> --test-suite -t <token> --labels "label1,label2"
+```
+
 
 ### Load Tests
 
@@ -187,19 +160,6 @@ printed out at the end:
 ```
 loadmill test.json -lw -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
-
-### Test suites
-
-You may launch a test suite by setting the `-s` or `--test-suite` option:
-```
-loadmill test-suite-id --test-suite -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
-```
-
-The test suite will be launched and its unique identifier will be printed to the standard output. You may alternatively
-set the `-w` or `--wait` option in order to wait for the load test to finish, in which case only the result JSON will be
-printed out at the end
-
-You can add an additional description at the end of the current suite's description by supplying the optional `--additional-description <description>` option.
 
 ### Exit Status
 
@@ -219,13 +179,12 @@ Full list of command line options:
 
 - `-h, --help` Output usage information.
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
-- `-l, --load-test` Launch a load test. If not set, a functional test will run instead.
+- `-l, --load-test` Launch a load test. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
-- `--additional-description <description>` Add an aditional description at the end of the current suite's description - available only for test suites.
-- `-a, --async` Run the test asynchronously - affects only functional tests. Use this if your test can take longer than 25 seconds (otherwise it will timeout).
-- `-w, --wait` Wait for the test to finish. Functional tests are automatically waited on unless async flag is turned on.
+- `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
+- `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
+- `-w, --wait` Wait for the test to finish. 
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).
 - `-v, --verbose` Print out extra information for debugging (trumps `-q`). In case of an error will print the entire test's requests otherwise will print only the failed request.
 - `--colors` Print test results in color.
-- `-c, --local` Execute functional test synchronously on local machine. This flag overrides load-test and async options.
