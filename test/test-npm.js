@@ -1,9 +1,10 @@
 const assert = require('assert');
+require('dotenv').config();
 const timeout = 80000;
 const uuidPattern = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const token = process.env.TOKEN;
 const url = process.env.URL;
-const suiteId = process.env.SUITEID;
+const suiteId = process.env.SUITE_ID;
 const additionalDescription = "npm-unit-test"
 
 const loadmill = require('../lib/index.js')({ token });
