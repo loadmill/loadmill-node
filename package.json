@@ -21,7 +21,14 @@
   "license": "Apache-2.0",
   "scripts": {
     "prepare": "tsc && rm -f lib/loadmill.d.ts  lib/utils.d.ts lib/polyfills.d.ts",
-    "test": "mocha"
+    "test": "npm run test-npm && npm run test-cli",
+    "test-npm": "mocha",
+    "test-cli": "./test/test-cli.sh"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm test"
+    }
   },
   "dependencies": {
     "bluebird": "^3.4.7",
@@ -44,7 +51,9 @@
   },
   "devDependencies": {
     "@types/node": "^9.4.7",
-    "typescript": "^2.7.2",
-    "mocha": "^7.0.0"
+    "dotenv": "^8.2.0",
+    "husky": "^4.2.1",
+    "mocha": "^7.0.0",
+    "typescript": "^2.7.2"
   }
 }
