@@ -1,6 +1,7 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
-import { getJSONFilesInFolderRecursively, Logger, isUUID, getObjectAsString, convertStrToArr } from './utils';
+import { getJSONFilesInFolderRecursively, Logger, isUUID, 
+    getObjectAsString, convertStrToArr, printFlowRunsReport } from './utils';
 
 program
     .usage("<load-config-file-or-folder | testSuiteId> -t <token> [options] [parameter=value...]")
@@ -18,6 +19,7 @@ program
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
     .option("-v, --verbose", "Print out extra information for debugging.")
+    .option("-r, --report", "Print out Test Suite Flow Runs report when the suite has ended.")
     .option("--colors", "Print test results in color")
     .parse(process.argv);
 
@@ -37,6 +39,7 @@ async function start() {
         token,
         verbose,
         colors,
+        report,
         local,
         loadTest,
         testSuite,
@@ -65,6 +68,7 @@ async function start() {
             quiet,
             token,
             verbose,
+            report,
             loadTest,
             testSuite,
             additionalDescription,
@@ -79,7 +83,7 @@ async function start() {
         if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
             validationFailed("Test suite run flag is on but no valid test suite id was provided.");
         }
-        let res;
+        let res, flowRuns;
         const suite: Loadmill.TestSuiteDef = { id: input, additionalDescription, labels: convertStrToArr(labels) };
         try {
             let running = await loadmill.runTestSuite(suite, parameters);
@@ -91,10 +95,16 @@ async function start() {
                 if (wait) {
                     logger.verbose("Waiting for test suite:", testSuiteRunId);
                     res = await loadmill.wait(running);
+                    flowRuns = res.flowRuns;
+                    delete res.flowRuns; // dont want to print these in getObjectAsString
                 }
 
                 if (!quiet) {
                     logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
+                }
+
+                if(report && flowRuns) {
+                    printFlowRunsReport(flowRuns, logger, colors);
                 }
 
                 if (res && res.passed != null && !res.passed) {

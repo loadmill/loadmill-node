@@ -59,6 +59,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         ...testDef,
                         url: webUrl,
                         passed: isTestPassed(body, testDef.type),
+                        flowRuns: reductFlowRunsData(body.testSuiteFlowRuns)
                     };
 
                     if (callback) {
@@ -346,6 +347,12 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
             return `${prefix}/api-tests/test-suite-runs/${id}`
         default: //load
             return `${prefix}/test/${id}`
+    }
+}
+
+function reductFlowRunsData(flowRuns) {
+    if (flowRuns) {
+        return flowRuns.map( f => ({description: f.description, status: f.status }));
     }
 }
 

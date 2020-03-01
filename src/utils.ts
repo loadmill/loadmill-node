@@ -43,6 +43,21 @@ export const getObjectAsString = (obj, colors) => {
     return util.inspect(obj, { showHidden: false, depth: null, colors: colors, compact: false } as any);
 }
 
+const coloredFlowLine = (status, colors) => {
+    if (!colors) {
+        return status;
+    }
+    return `${getStatusColor(status)}${status}${CLI_COLORS.DEFAULT}`;
+}
+
+export const printFlowRunsReport = (testSuiteFlowRuns, logger, colors) => {
+    if (testSuiteFlowRuns) {
+        logger.log("Test Suite Flow Runs report:");
+        testSuiteFlowRuns.map(
+            f => logger.log(`Flow ${f.description} - ${coloredFlowLine(f.status, colors)}`));
+    }
+}
+
 export const convertStrToArr = (strWithCommas) => {
     return typeof strWithCommas !== "string" ? null : strWithCommas.split(",");
 }
@@ -148,10 +163,30 @@ export class Logger {
     log = (msg, ...args) => console.log(msg, ...args);
     error = (err) => {
         if (this.colors) {
-            console.log('\x1b[31m', err, '\x1b[0m')
+            console.log(CLI_COLORS.RED, err, CLI_COLORS.DEFAULT);
         } else {
-            console.log(err)
+            console.log(err);
         }
     };
     verbose = (msg, ...args) => this.verb ? console.log(msg, ...args) : void (0);
+}
+
+const getStatusColor = (status) => {
+    switch (status) {
+        case "PASSED":
+            return CLI_COLORS.GREEN;
+        case "FAILED":
+            return CLI_COLORS.RED;
+        case "STOPPED":
+            return CLI_COLORS.GREY;
+        default:
+            return CLI_COLORS.DEFAULT;
+    }
+}
+
+const CLI_COLORS = {
+    RED: '\x1b[31m',
+    GREEN: '\x1b[32m',
+    GREY: '\x1b[90m',
+    DEFAULT: '\x1b[0m'
 }
