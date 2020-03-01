@@ -9,7 +9,7 @@ const additionalDescription = "npm-unit-test"
 
 const loadmill = require('../lib/index.js')({ token });
 
-describe('Validate load-test', () => {
+xdescribe('Validate load-test', () => {
     it('validate loadmill.run()', async () => {
         let isPassed = false;
         try {
