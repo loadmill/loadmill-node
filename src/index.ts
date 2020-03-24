@@ -104,6 +104,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 const verbose = testArgs && testArgs.verbose ? testArgs.verbose : false;
                 const colors = testArgs && testArgs.colors ? testArgs.colors : false;
                 const logger = new Logger(verbose, colors);
+                logger.warn(`Deprecation warning: Functional tests are deprecated. Please use test-suites instead.`);
                 const description = (config.meta && config.meta.description) || 'no-test-description';
 
                 config = toConfig(config, paramsOrCallback);
@@ -132,6 +133,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         paramsOrCallback: Loadmill.ParamsOrCallback,
         callback: Loadmill.Callback) {
 
+        console.warn('Deprecation warning: Functional tests are deprecated. Please use test-suites instead.');
         return wrap(
             async () => {
                 const description = (config.meta && config.meta.description) || 'no-test-description';

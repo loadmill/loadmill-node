@@ -172,6 +172,8 @@ You may set loadmill parameter values via command line arguments by passing `nam
 ```
 loadmill parametrized_test.json host=test.myapp.com port=4443 -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
+### Functional Tests - Deprecation warning
+Functional tests, i.e. `runFunctional` etc..., are deprected. We recommend using test suites insted
 
 ### CLI Options
 

@@ -4,7 +4,7 @@ import { getJSONFilesInFolderRecursively, Logger, isUUID,
     getObjectAsString, convertStrToArr, printFlowRunsReport } from './utils';
 
 program
-    .usage("<load-config-file-or-folder | testSuiteId> -t <token> [options] [parameter=value...]")
+    .usage("<testSuiteId | load-config-file-or-folder> -t <token> [options] [parameter=value...]")
     .description(
         "Run a load test or a test suite on loadmill.com.\n  " +
         "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80'.\n\n  " +
@@ -21,6 +21,7 @@ program
     .option("-v, --verbose", "Print out extra information for debugging.")
     .option("-r, --report", "Print out Test Suite Flow Runs report when the suite has ended.")
     .option("--colors", "Print test results in color")
+    .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test and async options")
     .parse(process.argv);
 
 start()
