@@ -168,6 +168,13 @@ export class Logger {
             console.log(err);
         }
     };
+    warn = (wrn) => {
+        if (this.colors) {
+            console.log(CLI_COLORS.YELLOW, wrn, CLI_COLORS.DEFAULT);
+        } else {
+            console.log(wrn);
+        }
+    };
     verbose = (msg, ...args) => this.verb ? console.log(msg, ...args) : void (0);
 }
 
@@ -187,6 +194,7 @@ const getStatusColor = (status) => {
 const CLI_COLORS = {
     RED: '\x1b[31m',
     GREEN: '\x1b[32m',
+    YELLOW: '\x1b[33m',
     GREY: '\x1b[90m',
     DEFAULT: '\x1b[0m'
 }
