@@ -6,13 +6,13 @@ import { getJSONFilesInFolderRecursively, Logger, isUUID,
 program
     .usage("<testSuiteId | load-config-file-or-folder> -t <token> [options] [parameter=value...]")
     .description(
-        "Run a load test or a test suite on loadmill.com.\n  " +
+        "Run a test suite (default option) or a load test on loadmill.com.\n  " +
         "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80'.\n\n  " +
         "Learn more at https://www.npmjs.com/package/loadmill#cli"
     )
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
     .option("-l, --load-test", "Launch a load test.")
-    .option("-s, --test-suite", "Launch a test suite. If set then a test suite id must be provided instead of config file.")
+    .option("-s, --test-suite", "Launch a test suite (default option). If set then a test suite id must be provided instead of config file.")
     .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
     .option("--labels <labels>", "Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with ',' (e.g. 'label1,label2').")
     .option("-w, --wait", "Wait for the test to finish.")
@@ -21,7 +21,7 @@ program
     .option("-v, --verbose", "Print out extra information for debugging.")
     .option("-r, --report", "Print out Test Suite Flow Runs report when the suite has ended.")
     .option("--colors", "Print test results in color")
-    .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test and async options")
+    .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test option")
     .parse(process.argv);
 
 start()
@@ -35,7 +35,6 @@ async function start() {
     let {
         wait,
         bail,
-        async,
         quiet,
         token,
         verbose,
@@ -43,7 +42,6 @@ async function start() {
         report,
         local,
         loadTest,
-        testSuite,
         additionalDescription,
         labels,
         args: [input, ...rawParams]
@@ -57,6 +55,7 @@ async function start() {
 
     const parameters = toParams(rawParams);
 
+    const testSuite = !loadTest && !local;
     if (verbose) {
         // verbose trumps quiet:
         quiet = false;
@@ -65,13 +64,13 @@ async function start() {
             input,
             wait,
             bail,
-            async,
             quiet,
             token,
             verbose,
             report,
-            loadTest,
             testSuite,
+            loadTest,
+            local,
             additionalDescription,
             labels,
             parameters,
@@ -142,16 +141,10 @@ async function start() {
                 logger.verbose(`Running ${file} as functional test locally`);
                 res = await loadmill.runFunctionalLocally(file, parameters, undefined, { verbose, colors });
             } else {
-                if (loadTest) {
-                    logger.verbose(`Launching ${file} as load test`);
-                    id = await loadmill.run(file, parameters);
-                } else {
-                    logger.verbose(`Running ${file} as functional test`);
-                    const method = async ? 'runAsyncFunctional' : 'runFunctional';
-                    res = await loadmill[method](file, parameters);
-                }
+                logger.verbose(`Launching ${file} as load test`);
+                id = await loadmill.run(file, parameters);
             }
-            if (wait && (loadTest || async)) {
+            if (wait && loadTest) {
                 logger.verbose("Waiting for test:", res ? res.id : id);
                 res = await loadmill.wait(res || id);
             }

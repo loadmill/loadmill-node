@@ -127,48 +127,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         );
     }
 
-    async function _runFunctional(
-        config: Loadmill.Configuration,
-        async: boolean,
-        paramsOrCallback: Loadmill.ParamsOrCallback,
-        callback: Loadmill.Callback) {
-
-        console.warn('Deprecation warning: Functional tests are deprecated. Please use test-suites instead.');
-        return wrap(
-            async () => {
-                const description = (config.meta && config.meta.description) || 'no-test-description';
-
-                config = toConfig(config, paramsOrCallback);
-
-                config['async'] = async;
-
-                const {
-                    body: {
-                        id,
-                        trialResult,
-                        incompleteMessage,
-                    }
-                } = await superagent.post(testingServer + "/api/tests/trials")
-                    .send(config)
-                    .auth(token, '');
-
-                if (incompleteMessage) {
-                    throw Error(incompleteMessage);
-                }
-                else {
-                    return {
-                        id,
-                        type: Loadmill.TYPES.FUNCTIONAL,
-                        url: `${testingServer}/app/functional/${id}`,
-                        passed: async ? null : isFunctionalPassed(trialResult),
-                        description: description
-                    };
-                }
-            },
-            callback || paramsOrCallback
-        );
-    }
-
     async function _runTestSuite(
         suite: Loadmill.TestSuiteDef | string,
         paramsOrCallback: Loadmill.ParamsOrCallback,
@@ -247,25 +205,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _wait(testDefOrId, callback);
         },
 
-        runFunctional(
-            config: Loadmill.Configuration,
-            paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
-
-            return _runFunctional(config, false, paramsOrCallback, callback);
+        runFunctional(): void {
+            console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
         },
 
-        async runFunctionalFolder(
-            folderPath: string,
-            paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestResult>> {
-
-            const listOfFiles = getJSONFilesInFolderRecursively(folderPath);
-            if (listOfFiles.length === 0) {
-                console.log(`No Loadmill test files were found at ${folderPath} - exiting...`);
-            }
-
-            return _runFolderSync(listOfFiles, _runFunctional, false, paramsOrCallback, callback);
+        runFunctionalFolder(): void {
+            console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
         },
 
         async runFunctionalLocally(config: Loadmill.Configuration,
@@ -288,12 +233,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _runFolderSync(listOfFiles, _runFunctionalLocally, paramsOrCallback, callback);
         },
 
-        runAsyncFunctional(
-            config: Loadmill.Configuration,
-            paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
-
-            return _runFunctional(config, true, paramsOrCallback, callback);
+        runAsyncFunctional(): void {
+                console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
         },
 
         runTestSuite(
