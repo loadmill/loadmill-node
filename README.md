@@ -44,12 +44,33 @@ const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
 const result = await loadmill.runTestSuite({id: "test-suite-uuid"});
 ```
 
-You can also extend the suite object:
+You can also extend the suite object with `options` object - containing:
+* additionalDescription - added at the end of the test suite description.
+* labels - will execute only flows attached to these labaels.
+
+Also, you may add a second argument if you wish to override suite parameters
 ```js
 const result = await loadmill.runTestSuite({
     id: "test-suite-uuid",
-    additionalDescription: "description to add", //optional
-    labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
+    options: {
+        additionalDescription: "description to add", //optional
+        labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
+    },
+    {
+        "parameterKey": "overrided value"
+    }
+}
+```
+
+You can also use one API call to launch all of the team's test suites which have flows marked for execution with the CI toggle:
+```js
+const result = await loadmill.runAllExecutableTestSuites({
+    {
+        additionalDescription: "description to add", //optional
+        labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
+    }
+    { "parameterKey": "overrided value" }, //optional
+    {verbose: true} // optional
 }
 ```
 
@@ -183,6 +204,7 @@ Full list of command line options:
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
+- `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. 
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
 - `-w, --wait` Wait for the test to finish. 

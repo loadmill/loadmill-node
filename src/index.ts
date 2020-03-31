@@ -1,7 +1,7 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, Logger } from './utils';
+import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, getLogger, getObjectAsString } from './utils';
 import { runFunctionalOnLocalhost } from 'loadmill-runner';
 
 export = Loadmill;
@@ -13,6 +13,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     } = options as any;
 
     const testingServer = "https://" + _testingServerHost;
+    const testSuitesAPI = `${testingServer}/api/test-suites`;
 
     async function _runFolderSync(
         listOfFiles: string[],
@@ -58,6 +59,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                     const testResult = {
                         ...testDef,
                         url: webUrl,
+                        description: body && body.description,
                         passed: isTestPassed(body, testDef.type),
                         flowRuns: reductFlowRunsData(body.testSuiteFlowRuns)
                     };
@@ -101,9 +103,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         testArgs?: Loadmill.Args) {
         return wrap(
             async () => {
-                const verbose = testArgs && testArgs.verbose ? testArgs.verbose : false;
-                const colors = testArgs && testArgs.colors ? testArgs.colors : false;
-                const logger = new Logger(verbose, colors);
+                const logger = getLogger(testArgs);
                 logger.warn(`Deprecation warning: Functional tests are deprecated. Please use test-suites instead.`);
                 const description = (config.meta && config.meta.description) || 'no-test-description';
 
@@ -128,20 +128,15 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     }
 
     async function _runTestSuite(
-        suite: Loadmill.TestSuiteDef | string,
+        suite: Loadmill.TestSuiteDef,
         paramsOrCallback: Loadmill.ParamsOrCallback,
-        callback: Loadmill.Callback) {
+        callback?: Loadmill.Callback) {
 
-        const overrideParameters = typeof paramsOrCallback !== 'function' ? paramsOrCallback : {};
+        const overrideParameters = paramsOrCallback && typeof paramsOrCallback !== 'function' ? paramsOrCallback : {};
 
-        let suiteId, additionalDescription, labels;
-        if (typeof suite === 'string') { // need to depricate the option of string in 2.x version
-            suiteId = suite;
-        } else {
-            suiteId = suite.id;
-            additionalDescription = suite.additionalDescription;
-            labels = suite.labels; 
-        }
+        const suiteId = suite.id;
+        const additionalDescription = suite.options && suite.options.additionalDescription;
+        const labels = suite.options && suite.options.labels;
 
         return wrap(
             async () => {
@@ -150,12 +145,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         testSuiteRunId,
                         err
                     }
-                } = await superagent.post(`${testingServer}/api/test-suites/${suiteId}/run`)
+                } = await superagent.post(`${testSuitesAPI}/${suiteId}/run`)
                     .send({ overrideParameters, additionalDescription, labels })
                     .auth(token, '');
 
                 if (err || !testSuiteRunId) {
-                    console.error(err ? JSON.stringify(err): "The server encountered an error while handling the request");
+                    console.error(err ? JSON.stringify(err) : "The server encountered an error while handling the request");
                     return;
                 }
                 return { id: testSuiteRunId, type: Loadmill.TYPES.SUITE };
@@ -163,6 +158,43 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             },
             callback || paramsOrCallback
         );
+    }
+
+    async function _getExecutableTestSuites(): Promise<Array<Loadmill.TestSuiteDef>> {
+        const { body: { testSuites } } = await superagent.get(`${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`)
+            .auth(token, '');
+        return testSuites.map(ts => ({
+            id: ts.id,
+            description: ts.description
+        } as Loadmill.TestSuiteDef));
+    }
+
+    async function _runAllExecutableTestSuites(
+        options?: Loadmill.TestSuiteOptions,
+        params?: Loadmill.Params,
+        testArgs?: Loadmill.Args): Promise<Array<Loadmill.TestResult>> {
+
+        const suites: Array<Loadmill.TestSuiteDef> = await _getExecutableTestSuites();
+        const logger = getLogger(testArgs);
+
+        if (!suites || suites.length === 0) {
+            logger.log(`No test suites marked for execution were found. Are you sure flows are marked with CI toggle? - exiting...`);
+        } else {
+            logger.verbose(`Found ${suites.length} test suites marked for execution. Executing one by one.`);
+        }
+
+        const results: Array<Loadmill.TestResult> = [];
+        for (let suite of suites) {
+            logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
+            suite.options = options;
+            await _runTestSuite(suite, params)
+                .then(_wait)
+                .then(res => {
+                    logger.verbose(`Suite result - ${getObjectAsString(res, testArgs && testArgs.colors)}`);
+                    results.push(res);
+                });
+        }
+        return results;
     }
 
     return {
@@ -234,16 +266,27 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         },
 
         runAsyncFunctional(): void {
-                console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
+            console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
         },
 
-        runTestSuite(
-            suite: string | Loadmill.TestSuiteDef,
+        async runTestSuite(
+            suite: Loadmill.TestSuiteDef,
             paramsOrCallback?: Loadmill.ParamsOrCallback,
             callback?: Loadmill.Callback): Promise<Loadmill.TestDef> {
 
             return _runTestSuite(suite, paramsOrCallback, callback);
         },
+
+        async getExecutableTestSuites(): Promise<Array<Loadmill.TestSuiteDef>> {
+            return _getExecutableTestSuites();
+        },
+
+        async runAllExecutableTestSuites(
+            options?: Loadmill.TestSuiteOptions,
+            params?: Loadmill.Params,
+            testArgs?: Loadmill.Args) {
+            return _runAllExecutableTestSuites(options, params, testArgs);
+        }
     };
 }
 
@@ -295,7 +338,7 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
 
 function reductFlowRunsData(flowRuns) {
     if (flowRuns) {
-        return flowRuns.map( f => ({description: f.description, status: f.status }));
+        return flowRuns.map(f => ({ description: f.description, status: f.status }));
     }
 }
 
@@ -346,7 +389,12 @@ namespace Loadmill {
 
     export interface TestSuiteDef {
         id: string;
-        additionalDescription: string;
+        description?: string;
+        options?: TestSuiteOptions;
+    }
+
+    export interface TestSuiteOptions {
+        additionalDescription?: string;
         labels?: string[] | null;
     }
 
@@ -357,7 +405,8 @@ namespace Loadmill {
     }
 
     export type Configuration = object | string | any; // todo: bad typescript
-    export type ParamsOrCallback = object | Callback;
+    export type Params = { [key: string]: string };
+    export type ParamsOrCallback = Params | Callback;
     export type Callback = { (err: Error | null, result: any): void } | undefined;
     export type Histogram = { [reason: string]: number };
     export type TestFailures = { [reason: string]: { [histogram: string]: Histogram } };
