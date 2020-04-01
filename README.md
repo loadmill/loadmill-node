@@ -64,18 +64,6 @@ const result = await loadmill.runTestSuite(
 }
 ```
 
-You can also use one API call to launch all of the team's test suites which have flows marked for execution with the CI toggle. This option will launch all of the team's suites one by one and wait for it them to finish.
-```js
-const result = await loadmill.runAllExecutableTestSuites(
-    {
-        additionalDescription: "description to add", //optional - added at the end of the test suite description.
-        labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
-    }
-    { "parameterKey": "overrided value" }, //optional
-    { verbose: true } // optional
-)
-```
-
 ### Load tests
 
 The following code runs a very simple load test that gets a single page from `www.myapp.com` every second for one minute:
@@ -121,6 +109,21 @@ loadmill.run("./load-tests/simple.json")
 ```
 
 ### Running multiple tests
+
+You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle swtiched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default).
+```js
+/**
+ * @returns [{id: string, type: 'test-suite', passed: boolean, url: string}]
+ */
+const result = await loadmill.runAllExecutableTestSuites(
+    {
+        additionalDescription: "description to add", //optional - added at the end of the test suite description.
+        labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
+    }
+    { "parameterKey": "overrided value" }, //optional
+    { verbose: true } // optional
+)
+```
 
 In case you wish to run all the Loadmill tests in a given folder you can use the `runFolder` API.
 It will execute all the tests **synchronously** (using the `wait` option by default) unless a test has failed.
