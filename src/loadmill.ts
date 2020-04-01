@@ -88,7 +88,7 @@ async function start() {
         let res, flowRuns, suites: Array<Loadmill.TestSuiteDef> = [];
 
         if (launchAllTestSuites) {
-            logger.verbose(`Launch all Team's test suites flag is on. Getting all team's test suits marked for execution.`);
+            logger.verbose(`Launch all Team's test suites flag is on. Getting all team's test suites marked for execution.`);
 
             suites = await loadmill.getExecutableTestSuites();
             if (!suites || suites.length === 0) {

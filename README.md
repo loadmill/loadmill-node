@@ -46,15 +46,17 @@ const result = await loadmill.runTestSuite({id: "test-suite-uuid"});
 
 You can also extend the suite object with `options` object - containing:
 * additionalDescription - added at the end of the test suite description.
-* labels - will execute only flows attached to these labaels.
+* labels - will execute only flows attached to these labales.
 
 Also, you may add a second argument if you wish to override suite parameters
 ```js
-const result = await loadmill.runTestSuite({
-    id: "test-suite-uuid",
-    options: {
-        additionalDescription: "description to add", //optional
-        labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
+const result = await loadmill.runTestSuite(
+    {
+        id: "test-suite-uuid",
+        options: { //optional
+            additionalDescription: "description to add", // will be added to the end of the test suite description.
+            labels: ["label1", "label2"] //run flows that are assigned to specific label/s
+        }
     },
     {
         "parameterKey": "overrided value"
@@ -62,16 +64,16 @@ const result = await loadmill.runTestSuite({
 }
 ```
 
-You can also use one API call to launch all of the team's test suites which have flows marked for execution with the CI toggle:
+You can also use one API call to launch all of the team's test suites which have flows marked for execution with the CI toggle. This option will launch all of the team's suites one by one and wait for it them to finish.
 ```js
-const result = await loadmill.runAllExecutableTestSuites({
+const result = await loadmill.runAllExecutableTestSuites(
     {
-        additionalDescription: "description to add", //optional
+        additionalDescription: "description to add", //optional - added at the end of the test suite description.
         labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
     }
     { "parameterKey": "overrided value" }, //optional
-    {verbose: true} // optional
-}
+    { verbose: true } // optional
+)
 ```
 
 ### Load tests
