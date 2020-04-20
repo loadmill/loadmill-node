@@ -163,6 +163,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     async function _getExecutableTestSuites(): Promise<Array<Loadmill.TestSuiteDef>> {
         const { body: { testSuites } } = await superagent.get(`${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`)
             .auth(token, '');
+
+        if (testSuites.length >= 100) {
+            // this is for protection
+            throw new Error(`Not allowed to execute more than 100 suites at once. Found ${testSuites.length} suites.`);
+        }
+
         return testSuites.map(ts => ({
             id: ts.id,
             description: ts.description
