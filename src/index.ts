@@ -176,7 +176,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             // take only the Ids of the specified labels from the team labels
             const teamLabelIdsForExecution = teamLabels
                 .filter(tl => labels.some(l => l === tl.description))
-                .map(tl => tl.id) || [];
+                .map(tl => tl.id);
 
             // filter all suites that doesnt have the specified labels
             testSuites = testSuites.filter(
