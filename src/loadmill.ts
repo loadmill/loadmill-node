@@ -86,11 +86,12 @@ async function start() {
 
     if (testSuite) {
         let res, flowRuns, suites: Array<Loadmill.TestSuiteDef> = [];
+        const suiteLabels = convertStrToArr(labels)
 
         if (launchAllTestSuites) {
-            logger.verbose(`Launch all Team's test suites flag is on. Getting all team's test suites marked for execution.`);
+            logger.verbose(`Flag 'launch all Team's test suites' is on. Getting all team's test suites marked for execution.`);
 
-            suites = await loadmill.getExecutableTestSuites();
+            suites = await loadmill.getExecutableTestSuites(suiteLabels);
             if (!suites || suites.length === 0) {
                 logger.log(`No test suites marked for execution were found. Are you sure flows are marked with CI toggle? - exiting...`);
             } else {
@@ -101,16 +102,10 @@ async function start() {
             if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
                 validationFailed("Test suite run flag is on but no valid test suite id was provided.");
             }
-            suites.push({
-                id: input,
-                options: {
-                    additionalDescription, labels: convertStrToArr(labels)
-                }
-            }
-            );
+            suites.push({ id: input });
         }
-        const failedSuites: Array<string> = [];
 
+        const failedSuites: Array<string> = [];
         const testFailed = (msg: string) => {
             logger.log("");
             logger.error(`❌ ${msg}.`);
@@ -122,7 +117,14 @@ async function start() {
             try {
                 logger.verbose(`Executing suite with id ${suite.id}`);
                 suite.description && logger.verbose(`Suite description: ${suite.description}`);
-                let running = await loadmill.runTestSuite(suite, parameters);
+                let running = await loadmill.runTestSuite(
+                    {
+                        ...suite,
+                        options: {
+                            additionalDescription, labels: suiteLabels
+                        }
+                    },
+                    parameters);
 
                 if (running && running.id) {
 
