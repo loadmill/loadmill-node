@@ -36,7 +36,12 @@ describe('Validate test-suite', () => {
         let isPassed = false;
         try {
             // return --> { id: 'uuid', type: 'test-suite' }
-            const result = await loadmill.runTestSuite({ id: suiteId, additionalDescription, labels: ["npm-sanity"] });
+            const result = await loadmill.runTestSuite({
+                id: suiteId,
+                options: {
+                    additionalDescription, labels: ["npm-sanity"]
+                }
+            });
             assert.notEqual(result.id.match(uuidPattern), null);
 
             const res = await loadmill.wait(result);

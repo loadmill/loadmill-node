@@ -50,10 +50,11 @@ const coloredFlowLine = (status, colors) => {
     return `${getStatusColor(status)}${status}${CLI_COLORS.DEFAULT}`;
 }
 
-export const printFlowRunsReport = (testSuiteFlowRuns, logger, colors) => {
-    if (testSuiteFlowRuns) {
-        logger.log("Test Suite Flow Runs report:");
-        testSuiteFlowRuns.map(
+export const printFlowRunsReport = (suiteDescription, suiteFlowRuns, logger, colors) => {
+    if (suiteFlowRuns) {
+        logger.log("");
+        logger.log(`Test Suite [${suiteDescription}] Flow Runs report:`);
+        suiteFlowRuns.map(
             f => logger.log(`Flow ${f.description} - ${coloredFlowLine(f.status, colors)}`));
     }
 }
@@ -176,6 +177,12 @@ export class Logger {
         }
     };
     verbose = (msg, ...args) => this.verb ? console.log(msg, ...args) : void (0);
+}
+
+export const getLogger = (testArgs) => {
+    const verbose = testArgs && testArgs.verbose ? testArgs.verbose : false;
+    const colors = testArgs && testArgs.colors ? testArgs.colors : false;
+    return new Logger(verbose, colors);
 }
 
 const getStatusColor = (status) => {
