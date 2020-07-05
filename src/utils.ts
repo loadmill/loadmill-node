@@ -146,26 +146,31 @@ export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: 
 };
 
 const generateJunitJsonReport = (suiteOrSuites: Loadmill.TestResult | Array<Loadmill.TestResult>) => {
-    
+
     if (!Array.isArray(suiteOrSuites)) {
         suiteOrSuites = [suiteOrSuites];
     }
 
-    const flowResult = (f) => {
-        return {
-            'testcase': {
+    const flowResult = (f: Loadmill.FlowRun) => {
+        const flowRun: any = {
+            'testcase': [{
                 _attr: {
                     name: f.description,
                     status: f.status
                 }
-            }
+            }]
         };
+
+        if (f.status === "FAILED") {
+            flowRun.testcase.push({ failure: "Flow Run Failed" });
+        }
+        return flowRun;
     }
 
-    const suiteResult = (suite) => {
+    const suiteResult = (suite: Loadmill.TestResult) => {
         const { flowRuns = [] } = suite;
         const failures = flowRuns.filter((f: any) => f.status !== 'PASSED').length;
-    
+
         return {
             'testsuite': [{
                 _attr: {
