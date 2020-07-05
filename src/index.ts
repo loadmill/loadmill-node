@@ -223,7 +223,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return results;
     }
 
-    function _junitReport(suite: Loadmill.TestResult, path?: string){
+    function _junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string){
         return createJunitReport(suite, path);
     }
 
@@ -317,7 +317,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _runAllExecutableTestSuites(options, params, testArgs);
         },
                 
-        junitReport(suite: Loadmill.TestResult, path?: string): void {
+        junitReport(suite: Loadmill.TestResult| Array<Loadmill.TestResult>, path?: string): void {
             return _junitReport(suite, path);
         },
 
