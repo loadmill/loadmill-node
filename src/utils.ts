@@ -170,7 +170,7 @@ const generateJunitJsonReport = (suite: Loadmill.TestResult) => {
         {
             'testsuite': [{
                 _attr: {
-                    name: suite.descrption,
+                    name: suite.description,
                     errors: failures,
                     failures,
                     timestamp: (new Date()).toISOString().slice(0, -5),

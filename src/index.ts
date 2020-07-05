@@ -435,13 +435,13 @@ namespace Loadmill {
     export interface TestResult extends TestDef {
         url: string;
         passed: boolean;
-        descrption: string
+        description: string
         flowRuns?: Array<FlowRun>
     }
 
     export interface FlowRun {
         status: string;
-        descrption: string
+        description: string
     }
 
     export type Configuration = object | string | any; // todo: bad typescript
