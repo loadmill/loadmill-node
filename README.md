@@ -64,6 +64,21 @@ const result = await loadmill.runTestSuite(
 }
 ```
 
+You can run the test suite and create a junit-like report in the end:
+ ```js
+/**
+ * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
+ */
+loadmill.runTestSuite({id: "test-suite-uuid"})
+    .then(loadmill.wait)
+    .then(loadmill.junitReport);
+
+// promise with async/await
+const id = await loadmill.runTestSuite({id: "test-suite-uuid"});
+const result = await loadmill.wait(id);
+loadmill.junitReport(result); // may add a second arg of path to save the report to.
+```
+
 ### Load tests
 
 The following code runs a very simple load test that gets a single page from `www.myapp.com` every second for one minute:
@@ -97,21 +112,6 @@ loadmill.run("./load-tests/long_test.json")
 // promise with async/await
 const loadTestId = await loadmill.run({ requests: [{ url: "www.myapp.com" }] });
 const result = await loadmill.wait(loadTestId);
-```
-
-You can do the same while creating a 'junit like' report instead of printing to console:
- ```js
-/**
- * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
- */
-loadmill.run("./load-tests/long_test.json")
-    .then(loadmill.wait)
-    .then(loadmill.junitReport);
-
-// promise with async/await
-const loadTestId = await loadmill.run({ requests: [{ url: "www.myapp.com" }] });
-const result = await loadmill.wait(loadTestId);
-loadmill.junitReport(result); // may add a second arg of path to save the report to.
 ```
 
 ### Promises vs Callbacks
