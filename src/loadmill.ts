@@ -2,7 +2,7 @@ import * as Loadmill from './index';
 import * as program from 'commander';
 import {
     getJSONFilesInFolderRecursively, getLogger, isUUID, isEmptyObj,
-    getObjectAsString, convertStrToArr, printFlowRunsReport
+    getObjectAsString, convertStrToArr, printFlowRunsReport, junitReport as createJunitReport
 } from './utils';
 
 program
@@ -23,6 +23,8 @@ program
     .option("-q, --quiet", "Do not print out anything (except errors).")
     .option("-v, --verbose", "Print out extra information for debugging.")
     .option("-r, --report", "Print out Test Suite Flow Runs report when the suite has ended.")
+    .option("-j, --junit-report", "Create Test Suite (junit style) report when the suite has ended.")
+    .option("--junit-report-path <junitReportPath>", "Save junit styled report to a path (defaults to current location).")
     .option("--colors", "Print test results in color")
     .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test option")
     .parse(process.argv);
@@ -43,6 +45,8 @@ async function start() {
         verbose,
         colors,
         report,
+        junitReport,
+        junitReportPath,
         launchAllTestSuites,
         local,
         loadTest,
@@ -72,6 +76,8 @@ async function start() {
             token,
             verbose,
             report,
+            junitReport,
+            junitReportPath,
             launchAllTestSuites,
             testSuite,
             loadTest,
@@ -134,7 +140,6 @@ async function start() {
                         logger.verbose("Waiting for test suite run with id", testSuiteRunId);
                         res = await loadmill.wait(running);
                         flowRuns = res.flowRuns;
-                        delete res.flowRuns; // dont want to print these in getObjectAsString
                     }
 
                     if (!quiet) {
@@ -143,6 +148,10 @@ async function start() {
 
                     if (report && flowRuns) {
                         printFlowRunsReport(res.description, flowRuns, logger, colors);
+                    }
+
+                    if (junitReport) {
+                        createJunitReport(res, junitReportPath);
                     }
 
                     if (res && res.passed != null && !res.passed) {

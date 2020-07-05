@@ -64,6 +64,21 @@ const result = await loadmill.runTestSuite(
 }
 ```
 
+You can run the test suite and create a junit-like report in the end:
+ ```js
+/**
+ * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
+ */
+loadmill.runTestSuite({id: "test-suite-uuid"})
+    .then(loadmill.wait)
+    .then(loadmill.junitReport);
+
+// promise with async/await
+const id = await loadmill.runTestSuite({id: "test-suite-uuid"});
+const result = await loadmill.wait(id);
+loadmill.junitReport(result); // may add a second arg of path to save the report to.
+```
+
 ### Load tests
 
 The following code runs a very simple load test that gets a single page from `www.myapp.com` every second for one minute:
@@ -217,4 +232,6 @@ Full list of command line options:
 - `-q, --quiet` Do not print out anything (except errors).
 - `-v, --verbose` Print out extra information for debugging (trumps `-q`). In case of an error will print the entire test's requests otherwise will print only the failed request.
 - `-r, --report` Print out Test Suite Flow Runs report when the suite has ended.
+- `-j, --junit-report` Create Test Suite (junit style) report when the suite has ended.
+- `--junit-report-path <path>` Save junit styled report to a path (defaults to current location) when `-j` flag is on.
 - `--colors` Print test results in color.

@@ -1,7 +1,8 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, getLogger, getObjectAsString } from './utils';
+import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors,
+    getLogger, getObjectAsString, junitReport as createJunitReport } from './utils';
 import { runFunctionalOnLocalhost } from 'loadmill-runner';
 
 export = Loadmill;
@@ -222,6 +223,10 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return results;
     }
 
+    function _junitReport(suite: Loadmill.TestResult, path?: string){
+        return createJunitReport(suite, path);
+    }
+
     return {
         run(
             config: Loadmill.Configuration,
@@ -261,7 +266,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
             return _wait(testDefOrId, callback);
         },
-
         runFunctional(): void {
             console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
         },
@@ -311,7 +315,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             params?: Loadmill.Params,
             testArgs?: Loadmill.Args) {
             return _runAllExecutableTestSuites(options, params, testArgs);
-        }
+        },
+                
+        junitReport(suite: Loadmill.TestResult, path?: string): void {
+            return _junitReport(suite, path);
+        },
+
     };
 }
 
@@ -426,7 +435,13 @@ namespace Loadmill {
     export interface TestResult extends TestDef {
         url: string;
         passed: boolean;
-        descrption: string
+        description: string
+        flowRuns?: Array<FlowRun>
+    }
+
+    export interface FlowRun {
+        status: string;
+        description: string
     }
 
     export type Configuration = object | string | any; // todo: bad typescript

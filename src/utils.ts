@@ -6,7 +6,7 @@ import findLast = require('lodash/findLast');
 import * as Loadmill from "./index";
 import { resolveExpression } from 'loadmill-runner';
 import * as util from 'util';
-
+import * as xml from "xml";
 
 const getAssertionErrors = (testResults) => {
     const resolvedRequests = testResults.resolvedRequests;
@@ -144,6 +144,77 @@ export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: 
 
     return filelist;
 };
+
+const generateJunitJsonReport = (suite: Loadmill.TestResult) => {
+    const { flowRuns = [] } = suite;
+    const failures = flowRuns.filter((f: any) => f.status !== 'PASSED').length;
+
+    const flowResult = (f) => {
+        return {
+            'testcase': {
+                _attr: {
+                    name: f.description,
+                    status: f.status
+                }
+            }
+        };
+    }
+
+    let jsonResults = {
+        'testsuites': [{
+            _attr: {
+                name: 'Loadmill suites run',
+                url: suite.url
+            }
+        },
+        {
+            'testsuite': [{
+                _attr: {
+                    name: suite.description,
+                    errors: failures,
+                    failures,
+                    timestamp: (new Date()).toISOString().slice(0, -5),
+                    tests: flowRuns.length
+                }
+            },
+            ...flowRuns.map(flowResult)
+            ]
+        }]
+    };
+
+    return jsonResults
+};
+
+const generateJunitXmlReport = (suite: Loadmill.TestResult) => {
+    const jsonResults = generateJunitJsonReport(suite);
+    return xml(jsonResults, { indent: '  ', declaration: true });
+}
+
+export const junitReport = (suite: Loadmill.TestResult, path?: string) => {
+    if (!suite) {
+        return;
+    }
+    const xml = generateJunitXmlReport(suite);
+    const resolvedPath = resolvePath(path ? path : './test-results');
+    ensureDirectoryExistence(resolvedPath);
+    fs.writeFileSync(resolvedPath, xml);
+}
+
+const ensureDirectoryExistence = (filePath) => {
+    var dirname = path.dirname(filePath);
+    if (fs.existsSync(dirname)) {
+        return true;
+    }
+    ensureDirectoryExistence(dirname);
+    fs.mkdirSync(dirname);
+}
+
+const resolvePath = (path: string) => {
+    if (path.charAt(path.length - 1) == '/') {
+        path = path.substr(0, path.length - 1);
+    }
+    return `${path}/loadmill/results.xml`
+}
 
 const endsWith = (str, suffix) => str.indexOf(suffix, str.length - suffix.length) !== -1;
 
