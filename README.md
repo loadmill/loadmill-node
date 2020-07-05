@@ -99,6 +99,21 @@ const loadTestId = await loadmill.run({ requests: [{ url: "www.myapp.com" }] });
 const result = await loadmill.wait(loadTestId);
 ```
 
+You can do the same while creating a 'junit like' report instead of printing to console:
+ ```js
+/**
+ * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
+ */
+loadmill.run("./load-tests/long_test.json")
+    .then(loadmill.wait)
+    .then(loadmill.junitReport);
+
+// promise with async/await
+const loadTestId = await loadmill.run({ requests: [{ url: "www.myapp.com" }] });
+const result = await loadmill.wait(loadTestId);
+loadmill.junitReport(result); // may add a second arg of path to save the report to.
+```
+
 ### Promises vs Callbacks
 
 Every function that accepts a callback will return a promise instead if no callback is provided (and vice versa):
@@ -217,4 +232,6 @@ Full list of command line options:
 - `-q, --quiet` Do not print out anything (except errors).
 - `-v, --verbose` Print out extra information for debugging (trumps `-q`). In case of an error will print the entire test's requests otherwise will print only the failed request.
 - `-r, --report` Print out Test Suite Flow Runs report when the suite has ended.
+- `-j, --junit-report` Create Test Suite (junit style) report when the suite has ended.
+- `--junit-report-path <path>` Save junit styled report to a path (defaults to current location) when `-j` flag is on.
 - `--colors` Print test results in color.
