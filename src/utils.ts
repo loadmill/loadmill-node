@@ -176,9 +176,9 @@ const generateJunitJsonReport = (suite: Loadmill.TestResult) => {
                     timestamp: (new Date()).toISOString().slice(0, -5),
                     tests: flowRuns.length
                 }
-            }, 
+            },
             ...flowRuns.map(flowResult)
-        ]
+            ]
         }]
     };
 
@@ -191,8 +191,11 @@ const generateJunitXmlReport = (suite: Loadmill.TestResult) => {
 }
 
 export const junitReport = (suite: Loadmill.TestResult, path?: string) => {
+    if (!suite) {
+        return;
+    }
     const xml = generateJunitXmlReport(suite);
-    const resolvedPath = resolvePath(path? path: './test-results');
+    const resolvedPath = resolvePath(path ? path : './test-results');
     ensureDirectoryExistence(resolvedPath);
     fs.writeFileSync(resolvedPath, xml);
 }
@@ -200,13 +203,13 @@ export const junitReport = (suite: Loadmill.TestResult, path?: string) => {
 const ensureDirectoryExistence = (filePath) => {
     var dirname = path.dirname(filePath);
     if (fs.existsSync(dirname)) {
-      return true;
+        return true;
     }
     ensureDirectoryExistence(dirname);
     fs.mkdirSync(dirname);
-  }
+}
 
-const resolvePath = (path: string) =>{
+const resolvePath = (path: string) => {
     if (path.charAt(path.length - 1) == '/') {
         path = path.substr(0, path.length - 1);
     }
