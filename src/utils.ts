@@ -145,9 +145,11 @@ export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: 
     return filelist;
 };
 
-const generateJunitJsonReport = (suite: Loadmill.TestResult) => {
-    const { flowRuns = [] } = suite;
-    const failures = flowRuns.filter((f: any) => f.status !== 'PASSED').length;
+const generateJunitJsonReport = (suiteOrSuites: Loadmill.TestResult | Array<Loadmill.TestResult>) => {
+    
+    if (!Array.isArray(suiteOrSuites)) {
+        suiteOrSuites = [suiteOrSuites];
+    }
 
     const flowResult = (f) => {
         return {
@@ -160,37 +162,44 @@ const generateJunitJsonReport = (suite: Loadmill.TestResult) => {
         };
     }
 
-    let jsonResults = {
-        'testsuites': [{
-            _attr: {
-                name: 'Loadmill suites run',
-                url: suite.url
-            }
-        },
-        {
+    const suiteResult = (suite) => {
+        const { flowRuns = [] } = suite;
+        const failures = flowRuns.filter((f: any) => f.status !== 'PASSED').length;
+    
+        return {
             'testsuite': [{
                 _attr: {
                     name: suite.description,
                     errors: failures,
                     failures,
                     timestamp: (new Date()).toISOString().slice(0, -5),
-                    tests: flowRuns.length
+                    tests: flowRuns.length,
+                    url: suite.url
                 }
             },
             ...flowRuns.map(flowResult)
             ]
-        }]
+        };
+    }
+
+    let jsonResults = {
+        'testsuites': [{
+            _attr: {
+                name: 'Loadmill suites run',
+            }
+        },
+        ...suiteOrSuites.map(suiteResult)]
     };
 
     return jsonResults
 };
 
-const generateJunitXmlReport = (suite: Loadmill.TestResult) => {
+const generateJunitXmlReport = (suite: Loadmill.TestResult | Array<Loadmill.TestResult>) => {
     const jsonResults = generateJunitJsonReport(suite);
     return xml(jsonResults, { indent: '  ', declaration: true });
 }
 
-export const junitReport = (suite: Loadmill.TestResult, path?: string) => {
+export const junitReport = (suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) => {
     if (!suite) {
         return;
     }
