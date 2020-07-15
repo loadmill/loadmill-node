@@ -278,6 +278,8 @@ const getStatusColor = (status) => {
             return CLI_COLORS.RED;
         case "STOPPED":
             return CLI_COLORS.GREY;
+        case "FLAKY":
+            return CLI_COLORS.YELLOW;
         default:
             return CLI_COLORS.DEFAULT;
     }
