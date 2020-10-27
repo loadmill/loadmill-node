@@ -165,7 +165,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         let url = `${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`;
         if (labels) {
             const labelsAsQueryParams = convertArrToLabelQueryParams(labels);
-            url = url.concat(labelsAsQueryParams, '&labelsWithCiEnabled=true');
+            url = url.concat(labelsAsQueryParams);
         }
         
         let { body: { testSuites } } = await superagent.get(url)
