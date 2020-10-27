@@ -63,6 +63,10 @@ export const convertStrToArr = (strWithCommas) => {
     return typeof strWithCommas !== "string" ? null : strWithCommas.split(",");
 }
 
+export const convertArrToLabelQueryParams = (arr: string[]): string => {
+    return '&label=' + arr.join('&label=');
+}
+
 const printRequest = (trialRes, assertionErrorsPerRequest, testArgs, logger) => {
     if (testArgs && testArgs.verbose) {
         logger.error('Test failure response -');
