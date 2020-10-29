@@ -1,7 +1,7 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors,
+import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, filterLabels,
     getLogger, getObjectAsString, convertArrToLabelQueryParams, junitReport as createJunitReport } from './utils';
 import { runFunctionalOnLocalhost } from 'loadmill-runner';
 
@@ -137,7 +137,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         const suiteId = suite.id;
         const additionalDescription = suite.options && suite.options.additionalDescription;
-        const labels = suite.options && suite.options.labels;
+        const labels = suite.options && suite.options.labels && filterLabels(suite.options.labels);
 
         return wrap(
             async () => {
@@ -164,8 +164,11 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     async function _getExecutableTestSuites(labels?: Array<string> | null): Promise<Array<Loadmill.TestSuiteDef>> {
         let url = `${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`;
         if (labels) {
-            const labelsAsQueryParams = convertArrToLabelQueryParams(labels);
-            url = url.concat(labelsAsQueryParams);
+            const filteredLabels = filterLabels(labels);
+            if (filteredLabels) {
+                const labelsAsQueryParams = convertArrToLabelQueryParams(filteredLabels);
+                url = url.concat(labelsAsQueryParams);
+            }
         }
         
         let { body: { testSuites } } = await superagent.get(url)
@@ -186,7 +189,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         options?: Loadmill.TestSuiteOptions,
         params?: Loadmill.Params,
         testArgs?: Loadmill.Args): Promise<Array<Loadmill.TestResult>> {
-
+        
         const suites: Array<Loadmill.TestSuiteDef> = await _getExecutableTestSuites(options && options.labels);
         const logger = getLogger(testArgs);
 

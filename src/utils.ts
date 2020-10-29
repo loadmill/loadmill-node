@@ -63,8 +63,15 @@ export const convertStrToArr = (strWithCommas) => {
     return typeof strWithCommas !== "string" ? null : strWithCommas.split(",");
 }
 
-export const convertArrToLabelQueryParams = (arr: string[]): string => {
+export const convertArrToLabelQueryParams = (arr: Array<string | number>): string => {
     return '&label=' + arr.join('&label=');
+}
+
+export const filterLabels = (labels: Array<number | string>) => {
+    if (labels.every(l => l == '')) {
+        return null;
+    }
+    return labels.filter(l => (typeof l === 'string' || typeof l === 'number') && l !== '');
 }
 
 const printRequest = (trialRes, assertionErrorsPerRequest, testArgs, logger) => {
