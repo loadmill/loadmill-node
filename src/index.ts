@@ -1,8 +1,8 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors,
-    getLogger, getObjectAsString, junitReport as createJunitReport } from './utils';
+import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, filterLabels,
+    getLogger, getObjectAsString, convertArrToLabelQueryParams, junitReport as createJunitReport } from './utils';
 import { runFunctionalOnLocalhost } from 'loadmill-runner';
 
 export = Loadmill;
@@ -15,7 +15,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
     const testingServer = "https://" + _testingServerHost;
     const testSuitesAPI = `${testingServer}/api/test-suites`;
-    const labelsAPI = `${testingServer}/api/labels`;
 
     async function _runFolderSync(
         listOfFiles: string[],
@@ -138,7 +137,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         const suiteId = suite.id;
         const additionalDescription = suite.options && suite.options.additionalDescription;
-        const labels = suite.options && suite.options.labels;
+        const labels = suite.options && suite.options.labels && filterLabels(suite.options.labels);
 
         return wrap(
             async () => {
@@ -163,30 +162,21 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     }
 
     async function _getExecutableTestSuites(labels?: Array<string> | null): Promise<Array<Loadmill.TestSuiteDef>> {
-        let { body: { testSuites } } = await superagent.get(`${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`)
+        let url = `${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`;
+        if (labels) {
+            const filteredLabels = filterLabels(labels);
+            if (filteredLabels) {
+                const labelsAsQueryParams = convertArrToLabelQueryParams(filteredLabels);
+                url = url.concat(labelsAsQueryParams);
+            }
+        }
+        
+        let { body: { testSuites } } = await superagent.get(url)
             .auth(token, '');
 
         if (testSuites.length >= 100) {
             // this is for protection
             throw new Error(`Not allowed to execute more than 100 suites at once. Found ${testSuites.length} suites.`);
-        }
-
-        if (labels) {
-            const { body: { teamLabels } } = await superagent.get(labelsAPI).auth(token, '');
-            
-            // take only the Ids of the specified labels from the team labels
-            const teamLabelIdsForExecution = teamLabels
-                .filter(tl => labels.some(l => l === tl.description))
-                .map(tl => tl.id);
-
-            // filter all suites that doesnt have the specified labels
-            testSuites = testSuites.filter(
-                ts => ts.assignedLabelsIds.some(
-                    asi => teamLabelIdsForExecution.some(
-                        tlId => tlId === asi.id
-                    )
-                )
-            );
         }
 
         return testSuites.map(ts => ({
@@ -199,7 +189,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         options?: Loadmill.TestSuiteOptions,
         params?: Loadmill.Params,
         testArgs?: Loadmill.Args): Promise<Array<Loadmill.TestResult>> {
-
+        
         const suites: Array<Loadmill.TestSuiteDef> = await _getExecutableTestSuites(options && options.labels);
         const logger = getLogger(testArgs);
 

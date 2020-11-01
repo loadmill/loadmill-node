@@ -15,7 +15,7 @@ describe('Validate load-test', () => {
         try {
             // return --> id: 'uuid'
             const loadTestId = await loadmill.run({ requests: [{ url }] });
-            assert.notEqual(loadTestId.match(uuidPattern), null);
+            assert.notStrictEqual(loadTestId.match(uuidPattern), null);
 
             const res = await loadmill.wait(loadTestId);
             if (res !== undefined) {
@@ -25,7 +25,7 @@ describe('Validate load-test', () => {
             console.error("err", err);
         }
         finally {
-            assert.equal(isPassed, true);
+            assert.strictEqual(isPassed, true);
         }
     }).timeout(timeout);
 });
@@ -42,7 +42,7 @@ describe('Validate test-suite', () => {
                     additionalDescription, labels: ["npm-sanity"]
                 }
             });
-            assert.notEqual(result.id.match(uuidPattern), null);
+            assert.notStrictEqual(result.id.match(uuidPattern), null);
 
             const res = await loadmill.wait(result);
             if (res !== undefined) {
@@ -53,8 +53,17 @@ describe('Validate test-suite', () => {
             console.error("err", err);
         }
         finally {
-            assert.equal(isPassed, true);
+            assert.strictEqual(isPassed, true);
         }
+    }).timeout(timeout);
+
+    it('validate runAllExecutableTestSuites', async () => {
+        let results;
+        results = await loadmill.runAllExecutableTestSuites({
+            additionalDescription,
+            labels: ["lone star"]
+        });
+        assert.deepStrictEqual(results, []);
     }).timeout(timeout);
 });
 
