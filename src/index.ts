@@ -138,6 +138,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const suiteId = suite.id;
         const additionalDescription = suite.options && suite.options.additionalDescription;
         const labels = suite.options && suite.options.labels && filterLabels(suite.options.labels);
+        const failGracefully = suite.options && suite.options.failGracefully;
 
         return wrap(
             async () => {
@@ -146,7 +147,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         testSuiteRunId,
                         err
                     }
-                } = await superagent.post(`${testSuitesAPI}/${suiteId}/run`)
+                } = await superagent.post(`${testSuitesAPI}/${suiteId}/run${failGracefully ? '?failGracefully=true': ''}`)
                     .send({ overrideParameters, additionalDescription, labels })
                     .auth(token, '');
 
@@ -420,6 +421,7 @@ namespace Loadmill {
     export interface TestSuiteOptions {
         additionalDescription?: string;
         labels?: string[] | null;
+        failGracefully?: boolean;
     }
 
     export interface TestResult extends TestDef {
