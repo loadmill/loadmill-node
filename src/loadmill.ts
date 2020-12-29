@@ -2,8 +2,9 @@ import * as Loadmill from './index';
 import * as program from 'commander';
 import {
     getJSONFilesInFolderRecursively, getLogger, isUUID, isEmptyObj,
-    getObjectAsString, convertStrToArr, printFlowRunsReport, junitReport as createJunitReport
+    getObjectAsString, convertStrToArr, printFlowRunsReport
 } from './utils';
+import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
 program
     .usage("<testSuiteId | load-config-file-or-folder> -t <token> [options] [parameter=value...]")
@@ -25,6 +26,8 @@ program
     .option("-r, --report", "Print out Test Suite Flow Runs report when the suite has ended.")
     .option("-j, --junit-report", "Create Test Suite (junit style) report when the suite has ended.")
     .option("--junit-report-path <junitReportPath>", "Save junit styled report to a path (defaults to current location).")
+    .option("-m, --mochawesome-report", "Create Test Suite (mochawesome style) report when the suite has ended.")
+    .option("--mochawesome-report-path <mochawesomeReportPath>", "Save JSON mochawesome styled report to a path (defaults to current location).")
     .option("--colors", "Print test results in color")
     .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test option")
     .parse(process.argv);
@@ -47,6 +50,8 @@ async function start() {
         report,
         junitReport,
         junitReportPath,
+        mochawesomeReport,
+        mochawesomeReportPath,
         launchAllTestSuites,
         local,
         loadTest,
@@ -78,6 +83,8 @@ async function start() {
             report,
             junitReport,
             junitReportPath,
+            mochawesomeReport,
+            mochawesomeReportPath,
             launchAllTestSuites,
             testSuite,
             loadTest,
@@ -151,7 +158,11 @@ async function start() {
                     }
 
                     if (junitReport) {
-                        createJunitReport(res, junitReportPath);
+                        await createJunitReport(res, token, junitReportPath);
+                    }
+
+                    if (mochawesomeReport) {
+                        await createMochawesomeReport(res, token, mochawesomeReportPath);
                     }
 
                     if (res && res.passed != null && !res.passed) {

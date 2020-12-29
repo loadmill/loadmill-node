@@ -79,6 +79,21 @@ const result = await loadmill.wait(id);
 loadmill.junitReport(result); // may add a second arg of path to save the report to.
 ```
 
+You can run the test suite and create a mochawesome report in the end:
+ ```js
+/**
+ * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
+ */
+loadmill.runTestSuite({id: "test-suite-uuid"})
+    .then(loadmill.wait)
+    .then(loadmill.mochawesomeReport);
+
+// promise with async/await
+const id = await loadmill.runTestSuite({id: "test-suite-uuid"});
+const result = await loadmill.wait(id);
+loadmill.mochawesomeReport(result); // may add a second arg of path to save the report to.
+```
+
 ### Load tests
 
 The following code runs a very simple load test that gets a single page from `www.myapp.com` every second for one minute:
@@ -234,4 +249,6 @@ Full list of command line options:
 - `-r, --report` Print out Test Suite Flow Runs report when the suite has ended.
 - `-j, --junit-report` Create Test Suite (junit style) report when the suite has ended.
 - `--junit-report-path <path>` Save junit styled report to a path (defaults to current location) when `-j` flag is on.
+- `-m, --mochawesome-report` Create Test Suite (mochawesome style) report when the suite has ended.
+- `--mochawesome-report-path <mochawesomeReportPath>` Save JSON mochawesome styled report to a path (defaults to current location) when `-m` flag is on.
 - `--colors` Print test results in color.

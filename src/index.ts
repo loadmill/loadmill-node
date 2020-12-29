@@ -1,8 +1,11 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import { getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, filterLabels,
-    getLogger, getObjectAsString, convertArrToLabelQueryParams, junitReport as createJunitReport } from './utils';
+import {
+    getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, filterLabels,
+    getLogger, getObjectAsString, convertArrToLabelQueryParams, TESTING_HOST
+} from './utils';
+import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 import { runFunctionalOnLocalhost } from 'loadmill-runner';
 
 export = Loadmill;
@@ -10,7 +13,7 @@ export = Loadmill;
 function Loadmill(options: Loadmill.LoadmillOptions) {
     const {
         token,
-        _testingServerHost = process.env.LOADMILL_SERVER_HOST || "www.loadmill.com"
+        _testingServerHost = TESTING_HOST
     } = options as any;
 
     const testingServer = "https://" + _testingServerHost;
@@ -62,7 +65,9 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         url: webUrl,
                         description: body && body.description,
                         passed: isTestPassed(body, testDef.type),
-                        flowRuns: reductFlowRunsData(body.testSuiteFlowRuns)
+                        flowRuns: reductFlowRunsData(body.testSuiteFlowRuns),
+                        startTime: body.startTime,
+                        endTime: body.endTime
                     };
 
                     if (callback) {
@@ -147,7 +152,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         testSuiteRunId,
                         err
                     }
-                } = await superagent.post(`${testSuitesAPI}/${suiteId}/run${failGracefully ? '?failGracefully=true': ''}`)
+                } = await superagent.post(`${testSuitesAPI}/${suiteId}/run${failGracefully ? '?failGracefully=true' : ''}`)
                     .send({ overrideParameters, additionalDescription, labels })
                     .auth(token, '');
 
@@ -171,7 +176,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 url = url.concat(labelsAsQueryParams);
             }
         }
-        
+
         let { body: { testSuites } } = await superagent.get(url)
             .auth(token, '');
 
@@ -190,7 +195,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         options?: Loadmill.TestSuiteOptions,
         params?: Loadmill.Params,
         testArgs?: Loadmill.Args): Promise<Array<Loadmill.TestResult>> {
-        
+
         const suites: Array<Loadmill.TestSuiteDef> = await _getExecutableTestSuites(options && options.labels);
         const logger = getLogger(testArgs);
 
@@ -214,8 +219,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return results;
     }
 
-    function _junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string){
-        return createJunitReport(suite, path);
+    async function _junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+        return createJunitReport(suite, token, path);
+    }
+
+    async function _mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+        return createMochawesomeReport(suite, token, path);
     }
 
     return {
@@ -307,9 +316,13 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             testArgs?: Loadmill.Args) {
             return _runAllExecutableTestSuites(options, params, testArgs);
         },
-                
-        junitReport(suite: Loadmill.TestResult| Array<Loadmill.TestResult>, path?: string): void {
+
+        async junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
             return _junitReport(suite, path);
+        },
+
+        async mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+            return _mochawesomeReport(suite, path);
         },
 
     };
@@ -337,6 +350,7 @@ function isTestInFinalState(body) {
     );
 }
 
+
 function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
     const prefix = `${server}/api`;
     switch (type) {
@@ -363,7 +377,11 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
 
 function reductFlowRunsData(flowRuns) {
     if (flowRuns) {
-        return flowRuns.map(f => ({ description: f.description, status: f.status }));
+        return flowRuns.map(f => ({
+            id: f.id,
+            description: f.description,
+            status: f.status
+        }));
     }
 }
 
@@ -428,12 +446,15 @@ namespace Loadmill {
         url: string;
         passed: boolean;
         description: string
-        flowRuns?: Array<FlowRun>
+        flowRuns?: Array<FlowRun>;
+        startTime: string;
+        endTime: string;
     }
 
     export interface FlowRun {
+        id: string;
         status: string;
-        description: string
+        description: string;
     }
 
     export type Configuration = object | string | any; // todo: bad typescript
