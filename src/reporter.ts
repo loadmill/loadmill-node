@@ -121,7 +121,7 @@ const toFailedFlowRunReport = (flowRun, formater) => {
             const totalNumRequests = numSuccesses + numFailures;
 
             if (numFailures > 0) {
-                let flowFailedText = `${genReqDesc(i)} ${description ? genReqDesc(i, description) : ''}, ${method} ${url} =>`;
+                let flowFailedText = `${genReqDesc(i)} ${description ? genReqDesc(i, description) : ''} ${method} ${url} =>`;
 
                 const assertionNames = Object.keys(assert);
                 const requestErrorNames = Object.keys(histogram).filter(
@@ -249,12 +249,17 @@ function numberify(num?: number | string | null, defaultValue = 0) {
 }
 
 function genReqDesc(index: number, description?: string) {
-    return description || `Request #${index + 1}`;
+    return `${description ? description : `Request #${index + 1}`} -`;
 }
 
 function getFlowRunAPI(f: Loadmill.FlowRun) {
     const testingServer = "https://" + TESTING_HOST;
     return `${testingServer}/api/test-suites-runs/flows/${f.id}`;
+}
+
+function getFlowRunWebURL(s: Loadmill.TestResult, f: Loadmill.FlowRun) {
+    const testingServer = "https://" + TESTING_HOST;
+    return `${testingServer}/app/api-tests/test-suite-runs/${s.id}/flows/${f.id}`;
 }
 
 const toMochawesomeFailedFlow = (flowRun) => {
@@ -278,7 +283,7 @@ const toMochawesomeFailedFlow = (flowRun) => {
     };
 };
 
-const flowToMochawesone = async (flow: Loadmill.FlowRun, token: string) => {
+const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.FlowRun, token: string) => {
 
     const url = getFlowRunAPI(flow);
     const { body: flowData } = await superagent.get(url).auth(token, '');
@@ -296,7 +301,7 @@ const flowToMochawesone = async (flow: Loadmill.FlowRun, token: string) => {
         "isHook": false,
         "skipped": false,
         "pending": false,
-        "code": '',
+        "code": getFlowRunWebURL(suite, flow),
         "err": hasPassed ? {} : toMochawesomeFailedFlow(flowData),
         "uuid": flow.id
     }
@@ -311,7 +316,7 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
 
     return {
         "title": suite.description,
-        "tests": await Promise.all(flows.map(f => flowToMochawesone(f, token))),
+        "tests": await Promise.all(flows.map(f => flowToMochawesone(suite, f, token))),
         "duration": (+suite.endTime - +suite.startTime),
         "suites": [],
         "uuid": suite.id,
@@ -350,7 +355,8 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
             "other": 0,
             "hasOther": false,
             "skipped": 0,
-            "hasSkipped": false
+            "hasSkipped": false,
+            "duration": (+suiteOrSuites[0].endTime - +suiteOrSuites[0].startTime)
         },
         "results": [
             {
