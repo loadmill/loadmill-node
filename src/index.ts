@@ -202,20 +202,33 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         if (!suites || suites.length === 0) {
             logger.log(`No test suites marked for execution were found. Are you sure flows are marked with CI toggle? - exiting...`);
         } else {
-            logger.verbose(`Found ${suites.length} test suites marked for execution. Executing one by one.`);
+            logger.verbose(`Found ${suites.length} test suites marked for execution.`);
         }
 
         const results: Array<Loadmill.TestResult> = [];
-        for (let suite of suites) {
-            logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
-            suite.options = options;
-            await _runTestSuite(suite, params)
+
+        if (options && options.parallel) {
+            logger.verbose(`Executing all suites in parallel`);
+            await Promise.all<void>(suites.map(suite => {
+                logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
+                return _runTestSuite({ ...suite, options }, params)
                 .then(_wait)
-                .then(res => {
-                    logger.verbose(`Suite result - ${getObjectAsString(res, testArgs && testArgs.colors)}`);
-                    results.push(res);
-                });
+                .then((res) => { results.push(res); })
+            }));
+        } else {
+
+            for (let suite of suites) {
+                logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
+                suite.options = options;
+                await _runTestSuite(suite, params)
+                    .then(_wait)
+                    .then(res => {
+                        logger.verbose(`Suite result - ${getObjectAsString(res, testArgs && testArgs.colors)}`);
+                        results.push(res);
+                    });
+            }
         }
+
         return results;
     }
 
@@ -440,6 +453,7 @@ namespace Loadmill {
         additionalDescription?: string;
         labels?: string[] | null;
         failGracefully?: boolean;
+        parallel?: boolean;
     }
 
     export interface TestResult extends TestDef {

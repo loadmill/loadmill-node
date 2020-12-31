@@ -140,7 +140,7 @@ loadmill.run("./load-tests/simple.json")
 
 ### Running multiple tests
 
-You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle swtiched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default).
+You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle swtiched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default). 
 ```js
 /**
  * @returns [{id: string, type: 'test-suite', passed: boolean, url: string}]
@@ -148,8 +148,9 @@ You can use one API call to launch all of your team's test suites which have flo
 const result = await loadmill.runAllExecutableTestSuites(
     {
         additionalDescription: "description to add", //optional - added at the end of the test suite description.
-        labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
-    }
+        labels: ["label1", "label2"], //optional - run flows that are assigned to specific label/s
+        parallel: true //optional if true will run all suites in parallel
+    },
     { "parameterKey": "overrided value" }, //optional
     { verbose: true } // optional
 )
@@ -239,7 +240,8 @@ Full list of command line options:
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
-- `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. 
+- `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end (executing one by one). 
+- `-p, --parallel` Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. 
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
 - `-w, --wait` Wait for the test to finish. 

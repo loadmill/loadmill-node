@@ -339,24 +339,25 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
     }
     const passedSuites = suiteOrSuites.filter(t => t.passed).length;
     const failedSuites = suiteOrSuites.filter(t => !t.passed).length;
+    const duration = suiteOrSuites.reduce((acc, s) => acc + (+s.endTime - +s.startTime), 0);
 
     const res = {
         "stats": {
             "suites": suiteOrSuites.length,
-            "tests": 1,
+            "tests": suiteOrSuites.length,
             "passes": passedSuites,
             "failures": failedSuites,
             "start": new Date(suiteOrSuites[0].startTime).toISOString(),
-            "end":  new Date(suiteOrSuites[0].endTime).toISOString(),
+            "end":  new Date().toISOString(),
             "pending": 0,
             "testsRegistered": suiteOrSuites.length,
             "pendingPercent": 0,
-            "passPercent": failedSuites / suiteOrSuites.length,
+            "passPercent": passedSuites / suiteOrSuites.length,
             "other": 0,
             "hasOther": false,
             "skipped": 0,
             "hasSkipped": false,
-            "duration": (+suiteOrSuites[0].endTime - +suiteOrSuites[0].startTime)
+            "duration": duration
         },
         "results": [
             {
@@ -374,7 +375,7 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
                 "passes": [],
                 "failures": [],
                 "skipped": [],
-                "duration": (+suiteOrSuites[0].endTime - +suiteOrSuites[0].startTime),
+                "duration": duration,
                 "rootEmpty": true
             }
         ]

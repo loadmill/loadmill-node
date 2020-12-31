@@ -67,6 +67,9 @@ export const convertArrToLabelQueryParams = (arr: Array<string | number>): strin
 }
 
 export const filterLabels = (labels: Array<number | string>) => {
+    if (!Array.isArray(labels)) {
+        throw new Error(`lables need be in array format i.e. ['my label', 'another label']. Got ${labels}`);
+    }
     if (labels.every(l => l == '')) {
         return null;
     }

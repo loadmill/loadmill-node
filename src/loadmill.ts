@@ -17,6 +17,7 @@ program
     .option("-l, --load-test", "Launch a load test.")
     .option("-s, --test-suite", "Launch a test suite (default option). If set then a test suite id must be provided instead of config file.")
     .option("-a, --launch-all-test-suites", "Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end")
+    .option("-p, --parallel", "Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as -a but in parallel")
     .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
     .option("--labels <labels>", "Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with ',' (e.g. 'label1,label2').")
     .option("-w, --wait", "Wait for the test to finish.")
@@ -53,6 +54,7 @@ async function start() {
         mochawesomeReport,
         mochawesomeReportPath,
         launchAllTestSuites,
+        parallel,
         local,
         loadTest,
         additionalDescription,
@@ -86,6 +88,7 @@ async function start() {
             mochawesomeReport,
             mochawesomeReportPath,
             launchAllTestSuites,
+            parallel,
             testSuite,
             loadTest,
             local,
@@ -98,25 +101,8 @@ async function start() {
     const loadmill = Loadmill({ token });
 
     if (testSuite) {
-        let res, flowRuns, suites: Array<Loadmill.TestSuiteDef> = [];
+        let results: Array<Loadmill.TestResult> = [];
         const suiteLabels = convertStrToArr(labels)
-
-        if (launchAllTestSuites) {
-            logger.verbose(`Flag 'launch all Team's test suites' is on. Getting all team's test suites marked for execution.`);
-
-            suites = await loadmill.getExecutableTestSuites(suiteLabels);
-            if (!suites || suites.length === 0) {
-                logger.log(`No test suites marked for execution were found. Are you sure flows are marked with CI toggle? - exiting...`);
-            } else {
-                logger.verbose(`Found ${suites.length} test suites marked for execution. Executing one by one.`);
-            }
-
-        } else {
-            if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
-                validationFailed("Test suite run flag is on but no valid test suite id was provided.");
-            }
-            suites.push({ id: input });
-        }
 
         const failedSuites: Array<string> = [];
         const testFailed = (msg: string) => {
@@ -126,13 +112,35 @@ async function start() {
             failedSuites.push(msg);
         }
 
-        for (let suite of suites) {
+        if (launchAllTestSuites || parallel) {
             try {
-                logger.verbose(`Executing suite with id ${suite.id}`);
-                suite.description && logger.verbose(`Suite description: ${suite.description}`);
+                results = await loadmill.runAllExecutableTestSuites(
+                    {
+                        additionalDescription,
+                        labels: suiteLabels,
+                        parallel,
+                    },
+                    parameters,
+                    { verbose, colors }
+                );
+            } catch (e) {
+                if (verbose) {
+                    logger.error(e);
+                }
+                const extInfo = e.response && e.response.res && e.response.res.text;
+                testFailed(`Couldn't run all of the team test suites. ${extInfo ? extInfo : ''}`);
+            }
+
+        } else {
+            if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
+                validationFailed("Test suite run flag is on but no valid test suite id was provided.");
+            }
+            try {
+                logger.verbose(`Executing suite with id ${input}`);
+
                 let running = await loadmill.runTestSuite(
                     {
-                        ...suite,
+                        id: input,
                         options: {
                             additionalDescription, labels: suiteLabels
                         }
@@ -141,32 +149,9 @@ async function start() {
 
                 if (running && running.id) {
 
-                    const testSuiteRunId = running.id;
-
-                    if (wait || launchAllTestSuites) {
-                        logger.verbose("Waiting for test suite run with id", testSuiteRunId);
-                        res = await loadmill.wait(running);
-                        flowRuns = res.flowRuns;
-                    }
-
-                    if (!quiet) {
-                        logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
-                    }
-
-                    if (report && flowRuns) {
-                        printFlowRunsReport(res.description, flowRuns, logger, colors);
-                    }
-
-                    if (junitReport) {
-                        await createJunitReport(res, token, junitReportPath);
-                    }
-
-                    if (mochawesomeReport) {
-                        await createMochawesomeReport(res, token, mochawesomeReportPath);
-                    }
-
-                    if (res && res.passed != null && !res.passed) {
-                        testFailed(`Test suite with id ${input || testSuiteRunId} has failed`);
+                    if (wait) {
+                        logger.verbose("Waiting for test suite run with id", running.id);
+                        results.push(await loadmill.wait(running));
                     }
 
                 } else {
@@ -178,6 +163,34 @@ async function start() {
                 }
                 const extInfo = e.response && e.response.res && e.response.res.text;
                 testFailed(`Couldn't run test suite with id ${input}. ${extInfo ? extInfo : ''}`);
+            }
+        }
+
+        results.forEach(async res => {
+            const testSuiteRunId = res.id;
+            const flowRuns = res.flowRuns;
+
+            if (!quiet) {
+                logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
+            }
+
+            if (report && flowRuns) {
+                printFlowRunsReport(res.description, flowRuns, logger, colors);
+            }
+
+            if (res && res.passed != null && !res.passed) {
+                testFailed(`Test suite with id ${testSuiteRunId || input} has failed`);
+            }
+
+        });
+
+        if (!isEmptyObj(results)) {
+            if (junitReport) {
+                await createJunitReport(results, token, junitReportPath);
+            }
+    
+            if (mochawesomeReport) {
+                await createMochawesomeReport(results, token, mochawesomeReportPath);
             }
         }
 
