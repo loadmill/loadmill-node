@@ -128,7 +128,6 @@ const toFailedFlowRunReport = (flowRun, formater) => {
                     (name) => !includes(assertionNames, name)
                 );
 
-                includes
                 requestErrorNames.map((name) => {
                     flowFailedText += ` ${name} `;
                 });
@@ -146,12 +145,14 @@ const toFailedFlowRunReport = (flowRun, formater) => {
                             flatPostParameters,
                             check
                         );
-                        const assErr = generateAssertionName(
-                            assert[assertion.name],
-                            actual,
-                            formater
-                        );
-                        errs.push({desc: flowFailedText, ass: assErr});
+                        if (actual) {
+                            const assErr = generateAssertionName(
+                                assert[assertion.name],
+                                actual,
+                                formater
+                            );
+                            errs.push({desc: flowFailedText, ass: assErr});
+                        }
                     }
                 });
                 if (isEmpty(errs)) {

@@ -61,7 +61,7 @@ const result = await loadmill.runTestSuite(
     {
         "parameterKey": "overrided value"
     }
-}
+);
 ```
 
 You can run the test suite and create a junit-like report in the end:
@@ -149,7 +149,7 @@ const result = await loadmill.runAllExecutableTestSuites(
     {
         additionalDescription: "description to add", //optional - added at the end of the test suite description.
         labels: ["label1", "label2"], //optional - run flows that are assigned to specific label/s
-        parallel: true //optional if true will run all suites in parallel
+        parallel: true //optional - if true will run all suites in parallel
     },
     { "parameterKey": "overrided value" }, //optional
     { verbose: true } // optional
