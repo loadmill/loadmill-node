@@ -6,7 +6,6 @@ import findLast = require('lodash/findLast');
 import * as Loadmill from "./index";
 import { resolveExpression } from 'loadmill-runner';
 import * as util from 'util';
-import * as xml from "xml";
 
 const getAssertionErrors = (testResults) => {
     const resolvedRequests = testResults.resolvedRequests;
@@ -68,6 +67,9 @@ export const convertArrToLabelQueryParams = (arr: Array<string | number>): strin
 }
 
 export const filterLabels = (labels: Array<number | string>) => {
+    if (!Array.isArray(labels)) {
+        throw new Error(`lables need be in array format i.e. ['my label', 'another label']. Got ${labels}`);
+    }
     if (labels.every(l => l == '')) {
         return null;
     }
@@ -156,90 +158,6 @@ export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: 
     return filelist;
 };
 
-const generateJunitJsonReport = (suiteOrSuites: Loadmill.TestResult | Array<Loadmill.TestResult>) => {
-
-    if (!Array.isArray(suiteOrSuites)) {
-        suiteOrSuites = [suiteOrSuites];
-    }
-
-    const flowResult = (f: Loadmill.FlowRun) => {
-        const flowRun: any = {
-            'testcase': [{
-                _attr: {
-                    name: f.description,
-                    status: f.status
-                }
-            }]
-        };
-
-        if (f.status === "FAILED") {
-            flowRun.testcase.push({ failure: "Flow Run Failed" });
-        }
-        return flowRun;
-    }
-
-    const suiteResult = (suite: Loadmill.TestResult) => {
-        const { flowRuns = [] } = suite;
-        const failures = flowRuns.filter((f: any) => f.status !== 'PASSED').length;
-
-        return {
-            'testsuite': [{
-                _attr: {
-                    name: suite.description,
-                    errors: failures,
-                    failures,
-                    timestamp: (new Date()).toISOString().slice(0, -5),
-                    tests: flowRuns.length,
-                    url: suite.url
-                }
-            },
-            ...flowRuns.map(flowResult)
-            ]
-        };
-    }
-
-    let jsonResults = {
-        'testsuites': [{
-            _attr: {
-                name: 'Loadmill suites run',
-            }
-        },
-        ...suiteOrSuites.map(suiteResult)]
-    };
-
-    return jsonResults
-};
-
-const generateJunitXmlReport = (suite: Loadmill.TestResult | Array<Loadmill.TestResult>) => {
-    const jsonResults = generateJunitJsonReport(suite);
-    return xml(jsonResults, { indent: '  ', declaration: true });
-}
-
-export const junitReport = (suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) => {
-    if (!suite) {
-        return;
-    }
-    const xml = generateJunitXmlReport(suite);
-    const resolvedPath = resolvePath(path ? path : './test-results');
-    ensureDirectoryExistence(resolvedPath);
-    fs.writeFileSync(resolvedPath, xml);
-}
-
-const ensureDirectoryExistence = (filePath) => {
-    var dirname = path.dirname(filePath);
-    if (fs.existsSync(dirname)) {
-        return true;
-    }
-    ensureDirectoryExistence(dirname);
-    fs.mkdirSync(dirname);
-}
-
-const resolvePath = (path: string) => {
-    if (path.charAt(path.length - 1) == '/') {
-        path = path.substr(0, path.length - 1);
-    }
-    return `${path}/loadmill/results.xml`
-}
 
 const endsWith = (str, suffix) => str.indexOf(suffix, str.length - suffix.length) !== -1;
 
@@ -303,3 +221,5 @@ const CLI_COLORS = {
     GREY: '\x1b[90m',
     DEFAULT: '\x1b[0m'
 }
+
+export const TESTING_HOST = process.env.LOADMILL_SERVER_HOST || "www.loadmill.com";

@@ -61,7 +61,7 @@ const result = await loadmill.runTestSuite(
     {
         "parameterKey": "overrided value"
     }
-}
+);
 ```
 
 You can run the test suite and create a junit-like report in the end:
@@ -77,6 +77,21 @@ loadmill.runTestSuite({id: "test-suite-uuid"})
 const id = await loadmill.runTestSuite({id: "test-suite-uuid"});
 const result = await loadmill.wait(id);
 loadmill.junitReport(result); // may add a second arg of path to save the report to.
+```
+
+You can run the test suite and create a mochawesome report in the end:
+ ```js
+/**
+ * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
+ */
+loadmill.runTestSuite({id: "test-suite-uuid"})
+    .then(loadmill.wait)
+    .then(loadmill.mochawesomeReport);
+
+// promise with async/await
+const id = await loadmill.runTestSuite({id: "test-suite-uuid"});
+const result = await loadmill.wait(id);
+loadmill.mochawesomeReport(result); // may add a second arg of path to save the report to.
 ```
 
 ### Load tests
@@ -125,7 +140,7 @@ loadmill.run("./load-tests/simple.json")
 
 ### Running multiple tests
 
-You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle swtiched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default).
+You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle swtiched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default). 
 ```js
 /**
  * @returns [{id: string, type: 'test-suite', passed: boolean, url: string}]
@@ -133,8 +148,9 @@ You can use one API call to launch all of your team's test suites which have flo
 const result = await loadmill.runAllExecutableTestSuites(
     {
         additionalDescription: "description to add", //optional - added at the end of the test suite description.
-        labels: ["label1", "label2"] //optional - run flows that are assigned to specific label/s
-    }
+        labels: ["label1", "label2"], //optional - run flows that are assigned to specific label/s
+        parallel: true //optional - if true will run all suites in parallel
+    },
     { "parameterKey": "overrided value" }, //optional
     { verbose: true } // optional
 )
@@ -224,7 +240,8 @@ Full list of command line options:
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
-- `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. 
+- `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end (executing one by one). 
+- `-p, --parallel` Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. 
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
 - `-w, --wait` Wait for the test to finish. 
@@ -234,4 +251,6 @@ Full list of command line options:
 - `-r, --report` Print out Test Suite Flow Runs report when the suite has ended.
 - `-j, --junit-report` Create Test Suite (junit style) report when the suite has ended.
 - `--junit-report-path <path>` Save junit styled report to a path (defaults to current location) when `-j` flag is on.
+- `-m, --mochawesome-report` Create Test Suite (mochawesome style) report when the suite has ended.
+- `--mochawesome-report-path <mochawesomeReportPath>` Save JSON mochawesome styled report to a path (defaults to current location) when `-m` flag is on.
 - `--colors` Print test results in color.
