@@ -3,6 +3,7 @@ import * as path from "path";
 import * as Loadmill from "./index";
 import * as xml from "xml";
 import * as superagent from 'superagent';
+const pLimit = require('p-limit');
 
 import flatMap = require('lodash/flatMap');
 import isEmpty = require('lodash/isEmpty');
@@ -269,7 +270,7 @@ const toMochawesomeFailedFlow = (flowRun) => {
         let text = '';
         if (actual != null) {
             text += `\n+   \"Expected: ${check} ${operation} ${value != null ? value : ''} `;
-            text += `\n-   \" Actual: ${actual !== 'null' ? actual : 'null'} `;
+            text += `\n-   \"Actual: ${actual !== 'null' ? actual : 'null'} `;
         }
         return text;
     });
@@ -315,9 +316,12 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
     const passedFlows = flows.filter(f => f.status === 'PASSED').map(f => f.id);
     const failedFlows = flows.filter(f => f.status === 'FAILED').map(f => f.id);
 
+    const flowsLength = flows.length;
+    const limit = pLimit(Math.max(3, Math.min(3, flowsLength / 5)));
+
     return {
         "title": suite.description,
-        "tests": await Promise.all(flows.map(f => flowToMochawesone(suite, f, token))),
+        "tests": await Promise.all(flows.map(f => limit(() => flowToMochawesone(suite, f, token)))),
         "duration": (+suite.endTime - +suite.startTime),
         "suites": [],
         "uuid": suite.id,
@@ -342,18 +346,21 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
     const failedSuites = suiteOrSuites.filter(t => !t.passed).length;
     const duration = suiteOrSuites.reduce((acc, s) => acc + (+s.endTime - +s.startTime), 0);
 
+    const suitesLength = suiteOrSuites.length;
+    const limit = pLimit(Math.max(3, Math.min(3, suitesLength / 5)));
+
     const res = {
         "stats": {
-            "suites": suiteOrSuites.length,
-            "tests": suiteOrSuites.length,
+            "suites": suitesLength,
+            "tests": suitesLength,
             "passes": passedSuites,
             "failures": failedSuites,
             "start": new Date(suiteOrSuites[0].startTime).toISOString(),
             "end":  new Date().toISOString(),
             "pending": 0,
-            "testsRegistered": suiteOrSuites.length,
+            "testsRegistered": suitesLength,
             "pendingPercent": 0,
-            "passPercent": passedSuites / suiteOrSuites.length,
+            "passPercent": passedSuites / suitesLength,
             "other": 0,
             "hasOther": false,
             "skipped": 0,
@@ -363,7 +370,7 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
         "results": [
             {
                 "title": "Loadmill API tests",
-                "suites": await Promise.all(suiteOrSuites.map(s => suiteToMochawesone(s, token))),
+                "suites": await Promise.all(suiteOrSuites.map(s => limit(() => suiteToMochawesone(s, token)))),
                 "tests": [],
                 "pending": [],
                 "root": true,

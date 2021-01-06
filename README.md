@@ -241,7 +241,7 @@ Full list of command line options:
 - `-l, --load-test` Launch a load test. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
 - `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end (executing one by one). 
-- `-p, --parallel` Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. 
+- `-p, --parallel` Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
 - `-w, --wait` Wait for the test to finish. 

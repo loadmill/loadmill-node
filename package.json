@@ -41,6 +41,7 @@
     "loadmill-runner": "~1.0.0",
     "lodash": "^4.17.19",
     "moment": "^2.17.0",
+    "p-limit": "^3.1.0",
     "quickselect": "^2.0.0",
     "randomstring": "^1.1.5",
     "superagent": "^3.8.2",

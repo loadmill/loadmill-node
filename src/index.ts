@@ -7,6 +7,7 @@ import {
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 import { runFunctionalOnLocalhost } from 'loadmill-runner';
+const pLimit = require('p-limit');
 
 export = Loadmill;
 
@@ -209,12 +210,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         if (options && options.parallel) {
             logger.verbose(`Executing all suites in parallel`);
-            await Promise.all<void>(suites.map(suite => {
+            const limit = pLimit(10); // max concurrency we allow
+            const suitesPromises = suites.map(suite => limit(() => {
                 logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
                 return _runTestSuite({ ...suite, options }, params)
                 .then(_wait)
-                .then((res) => { results.push(res); })
+                .then((res) => { results.push(res); });
             }));
+            await Promise.all<void>(suitesPromises);
         } else {
 
             for (let suite of suites) {
