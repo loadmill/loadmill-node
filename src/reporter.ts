@@ -13,7 +13,7 @@ import includes = require('lodash/includes');
 
 import { TESTING_HOST } from './utils';
 
-const generateJunitJsonReport = async (suiteOrSuites: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
+const generateJunitJsonReport = async (suiteOrSuites: Loadmill.TestSuiteResult | Array<Loadmill.TestSuiteResult>, token: string) => {
 
     if (!Array.isArray(suiteOrSuites)) {
         suiteOrSuites = [suiteOrSuites];
@@ -37,7 +37,7 @@ const generateJunitJsonReport = async (suiteOrSuites: Loadmill.TestResult | Arra
         return flowRun;
     }
 
-    const suiteResult = async (suite: Loadmill.TestResult) => {
+    const suiteResult = async (suite: Loadmill.TestSuiteResult) => {
         const { flowRuns = [] } = suite;
         const failures = flowRuns.filter((f: any) => f.status !== 'PASSED').length;
 
@@ -259,7 +259,7 @@ function getFlowRunAPI(f: Loadmill.FlowRun) {
     return `${testingServer}/api/test-suites-runs/flows/${f.id}`;
 }
 
-function getFlowRunWebURL(s: Loadmill.TestResult, f: Loadmill.FlowRun) {
+function getFlowRunWebURL(s: Loadmill.TestSuiteResult, f: Loadmill.FlowRun) {
     const testingServer = "https://" + TESTING_HOST;
     return `${testingServer}/app/api-tests/test-suite-runs/${s.id}/flows/${f.id}`;
 }
@@ -285,7 +285,7 @@ const toMochawesomeFailedFlow = (flowRun) => {
     };
 };
 
-const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.FlowRun, token: string) => {
+const flowToMochawesone = async (suite: Loadmill.TestSuiteResult, flow: Loadmill.FlowRun, token: string) => {
 
     const url = getFlowRunAPI(flow);
     const { body: flowData } = await superagent.get(url).auth(token, '');
@@ -310,7 +310,7 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
     return res;
 };
 
-const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => {
+const suiteToMochawesone = async (suite: Loadmill.TestSuiteResult, token: string) => {
 
     const flows = suite.flowRuns || [];
     const passedFlows = flows.filter(f => f.status === 'PASSED').map(f => f.id);
@@ -338,7 +338,7 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
     }
 };
 
-const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
+const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestSuiteResult | Array<Loadmill.TestSuiteResult>, token: string) => {
     if (!Array.isArray(suiteOrSuites)) {
         suiteOrSuites = [suiteOrSuites];
     }
@@ -391,7 +391,7 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
     return res;
 };
 
-export const junitReport = async (suite: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string, path?: string) => {
+export const junitReport = async (suite: Loadmill.TestSuiteResult | Array<Loadmill.TestSuiteResult>, token: string, path?: string) => {
     if (!suite) {
         return;
     }
@@ -402,7 +402,7 @@ export const junitReport = async (suite: Loadmill.TestResult | Array<Loadmill.Te
     fs.writeFileSync(resolvedPath, asXml);
 }
 
-export const mochawesomeReport = async (suite: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string, path?: string) => {
+export const mochawesomeReport = async (suite: Loadmill.TestSuiteResult | Array<Loadmill.TestSuiteResult>, token: string, path?: string) => {
     if (!suite) {
         return;
     }

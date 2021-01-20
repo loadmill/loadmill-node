@@ -2,7 +2,7 @@ import * as Loadmill from './index';
 import * as program from 'commander';
 import {
     getJSONFilesInFolderRecursively, getLogger, isUUID, isEmptyObj,
-    getObjectAsString, convertStrToArr, printFlowRunsReport
+    getObjectAsString, convertStrToArr, printFlowRunsReport, printTestSuiteRunsReport
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
@@ -15,6 +15,7 @@ program
     )
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
     .option("-l, --load-test", "Launch a load test.")
+    .option("-t, --test-plan", "Launch a test plan.")
     .option("-s, --test-suite", "Launch a test suite (default option). If set then a test suite id must be provided instead of config file.")
     .option("-a, --launch-all-test-suites", "Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end")
     .option("-p, --parallel", "Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as -a but in parallel")
@@ -57,6 +58,7 @@ async function start() {
         parallel,
         local,
         loadTest,
+        testPlan,
         additionalDescription,
         labels,
         args: [input, ...rawParams]
@@ -70,18 +72,18 @@ async function start() {
 
     const parameters = toParams(rawParams);
 
-    const testSuite = !loadTest && !local;
+    const testSuite = !loadTest && !local && !testPlan;
     if (verbose) {
         // verbose trumps quiet:
         quiet = false;
 
         logger.log("Inputs:", {
-            input,
             wait,
             bail,
             quiet,
             token,
             verbose,
+            colors,
             report,
             junitReport,
             junitReportPath,
@@ -89,9 +91,11 @@ async function start() {
             mochawesomeReportPath,
             launchAllTestSuites,
             parallel,
-            testSuite,
-            loadTest,
             local,
+            input,
+            loadTest,
+            testPlan,
+            testSuite,
             additionalDescription,
             labels,
             parameters,
@@ -100,8 +104,9 @@ async function start() {
 
     const loadmill = Loadmill({ token });
 
+
     if (testSuite) {
-        let results: Array<Loadmill.TestResult> = [];
+        let results: Array<Loadmill.TestSuiteResult> = [];
         const suiteLabels = convertStrToArr(labels)
 
         const failedSuites: Array<string> = [];
@@ -188,7 +193,7 @@ async function start() {
             if (junitReport) {
                 await createJunitReport(results, token, junitReportPath);
             }
-    
+
             if (mochawesomeReport) {
                 await createMochawesomeReport(results, token, mochawesomeReportPath);
             }
@@ -203,7 +208,91 @@ async function start() {
             }
         }
 
-    } else { // if test suite flag is off then the input should be fileOrFolder
+    }
+    else if (testPlan) {
+        let results: Array<Loadmill.TestPlanResult> = [];
+
+        const failedSuites: Array<string> = [];
+        const testFailed = (msg: string) => {
+            logger.log("");
+            logger.error(`❌ ${msg}.`);
+
+            failedSuites.push(msg);
+        }
+
+        if (!isUUID(input)) { //if test plan flag is on then the input should be uuid
+            validationFailed("Test plan run flag is on but no valid test plan id was provided.");
+        }
+        try {
+            logger.verbose(`Executing test plan with id ${input}`);
+            let running = await loadmill.runTestPlan(
+                {
+                    id: input,
+                    options: {
+                        additionalDescription
+                    }
+                },
+                parameters);
+
+            if (running && running.id) {
+
+                if (wait) {
+                    logger.verbose("Waiting for test plan run with id", running.id);
+                    results.push(await loadmill.waitTestPlan(running));
+                }
+
+            } else {
+                testFailed(`Couldn't run test plan with id ${input}`);
+            }
+        } catch (e) {
+            if (verbose) {
+                logger.error(e);
+            }
+            const extInfo = e.response && e.response.res && e.response.res.text;
+            testFailed(`Couldn't run test plan with id ${input}. ${extInfo ? extInfo : ''}`);
+        }
+
+        results.forEach(async res => {
+            const testPlanRunId = res.id;
+            const testSuiteRuns = res.testSuitesRuns;
+
+            if (!quiet) {
+                logger.log(res ? getObjectAsString(res, colors) : testPlanRunId);
+            }
+
+            if (report && testSuiteRuns) {
+                printTestSuiteRunsReport(res.description, testSuiteRuns, logger, colors);
+            }
+
+            if (res && res.passed != null && !res.passed) {
+                testFailed(`Test plan with id ${testPlanRunId || input} has failed`);
+            }
+
+        });
+
+        if (!isEmptyObj(results)) {
+            if (junitReport) {
+                // TODO: refactor for TP
+                // await createJunitReport(results, token, junitReportPath);
+            }
+
+            if (mochawesomeReport) {
+                // TODO: refactor for TP
+                // await createMochawesomeReport(results, token, mochawesomeReportPath);
+            }
+        }
+
+        if (!isEmptyObj(failedSuites)) {
+            logger.log("");
+            logger.error('Test execution errors:');
+            failedSuites.forEach(s => logger.error(s));
+            if (bail) {
+                process.exit(1);
+            }
+        }
+    }
+
+    else { // if test suite flag is off then the input should be fileOrFolder
 
         const fileOrFolder = input;
         if (!fileOrFolder) {

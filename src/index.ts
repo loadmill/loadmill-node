@@ -19,19 +19,20 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
     const testingServer = "https://" + _testingServerHost;
     const testSuitesAPI = `${testingServer}/api/test-suites`;
+    const testPlansAPI = `${testingServer}/api/test-plans`;
 
     async function _runFolderSync(
         listOfFiles: string[],
         execFunc: (...args) => Promise<any>,
         ...funcArgs) {
 
-        const results: Loadmill.TestResult[] = [];
+        const results: Loadmill.TestSuiteResult[] = [];
 
         for (let file of listOfFiles) {
             let res = await execFunc(file, ...funcArgs);
             let testResult;
             if (!isString(res) && !res.id) { // obj but without id -> local test
-                testResult = { url: Loadmill.TYPES.LOCAL, passed: res.passed } as Loadmill.TestResult;
+                testResult = { url: Loadmill.TYPES.LOCAL, passed: res.passed } as Loadmill.TestSuiteResult;
             } else { // obj with id -> functional test. id as string -> load test
                 testResult = await _wait(res);
             }
@@ -42,7 +43,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return results;
     }
 
-    async function _wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
+    async function _wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestSuiteResult> {
         let resolve, reject;
 
         const testDef = typeof testDefOrId === 'string' ? {
@@ -61,7 +62,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 if (isTestInFinalState(body)) {
                     clearInterval(intervalId);
 
-                    const testResult = {
+                    const testResult: Loadmill.TestSuiteResult = {
                         ...testDef,
                         url: webUrl,
                         description: body && body.description,
@@ -98,6 +99,48 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             10 * 1000);
 
         return callback ? null! as Promise<any> : new Promise((_resolve, _reject) => {
+            resolve = _resolve;
+            reject = _reject;
+        });
+    }
+
+    async function _waitTestPlan(testPlanDef: Loadmill.TestDef): Promise<Loadmill.TestPlanResult> {
+        let resolve, reject;
+
+        const testDef = testPlanDef;
+
+        const apiUrl = getTestAPIUrl(testDef, testingServer);
+        const webUrl = getTestWebUrl(testDef, testingServer);
+
+        const intervalId = setInterval(async () => {
+            try {
+                const { body } = await superagent.get(apiUrl)
+                    .auth(token, '');
+
+                if (isTestInFinalState(body)) {
+                    clearInterval(intervalId);
+
+                    const testPlanResult: Loadmill.TestPlanResult = {
+                        ...testDef,
+                        url: webUrl,
+                        description: body && body.description,
+                        passed: isTestPassed(body, testDef.type),
+                        testSuitesRuns: reductTestSuitesRuns(body.testSuitesRuns),
+                        startTime: body.startTime,
+                        endTime: body.endTime
+                    };
+
+                    resolve(testPlanResult);
+                }
+            }
+            catch (err) {
+                clearInterval(intervalId);
+                reject(err);
+            }
+        },
+            10 * 1000);
+
+        return new Promise((_resolve, _reject) => {
             resolve = _resolve;
             reject = _reject;
         });
@@ -168,6 +211,30 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         );
     }
 
+    async function _runTestPlan(
+        testPlan: Loadmill.TestPlanDef,
+        params: Loadmill.Params,
+    ) {
+        const overrideParameters = params || {};
+        const testPlanId = testPlan.id;
+        const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
+
+        const {
+            body: {
+                testPlanRunId,
+                err
+            }
+        } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
+            .send({ overrideParameters, additionalDescription })
+            .auth(token, '');
+
+        if (err || !testPlanRunId) {
+            console.error(err ? JSON.stringify(err) : "The server encountered an error while handling the request");
+            return;
+        }
+        return { id: testPlanRunId, type: Loadmill.TYPES.TEST_PLAN };
+    }
+
     async function _getExecutableTestSuites(labels?: Array<string> | null): Promise<Array<Loadmill.TestSuiteDef>> {
         let url = `${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`;
         if (labels) {
@@ -195,7 +262,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     async function _runAllExecutableTestSuites(
         options?: Loadmill.TestSuiteOptions,
         params?: Loadmill.Params,
-        testArgs?: Loadmill.Args): Promise<Array<Loadmill.TestResult>> {
+        testArgs?: Loadmill.Args): Promise<Array<Loadmill.TestSuiteResult>> {
 
         const suites: Array<Loadmill.TestSuiteDef> = await _getExecutableTestSuites(options && options.labels);
         const logger = getLogger(testArgs);
@@ -206,7 +273,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             logger.verbose(`Found ${suites.length} test suites marked for execution.`);
         }
 
-        const results: Array<Loadmill.TestResult> = [];
+        const results: Array<Loadmill.TestSuiteResult> = [];
 
         if (options && options.parallel) {
             logger.verbose(`Executing all suites in parallel`);
@@ -214,8 +281,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             const suitesPromises = suites.map(suite => limit(() => {
                 logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
                 return _runTestSuite({ ...suite, options }, params)
-                .then(_wait)
-                .then((res) => { results.push(res); });
+                    .then(_wait)
+                    .then((res) => { results.push(res); });
             }));
             await Promise.all<void>(suitesPromises);
         } else {
@@ -235,11 +302,13 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return results;
     }
 
-    async function _junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+    // TODO: support test-plan too
+    async function _junitReport(suite: Loadmill.TestSuiteResult | Array<Loadmill.TestSuiteResult>, path?: string) {
         return createJunitReport(suite, token, path);
     }
 
-    async function _mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+    // TODO: support test-plan too
+    async function _mochawesomeReport(suite: Loadmill.TestSuiteResult | Array<Loadmill.TestSuiteResult>, path?: string) {
         return createMochawesomeReport(suite, token, path);
     }
 
@@ -269,7 +338,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         async runFolder(
             folderPath: string,
             paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestResult>> {
+            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestSuiteResult>> {
 
             const listOfFiles = getJSONFilesInFolderRecursively(folderPath);
             if (listOfFiles.length === 0) {
@@ -279,8 +348,11 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         },
 
-        wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
+        wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestSuiteResult> {
             return _wait(testDefOrId, callback);
+        },
+        waitTestPlan(testPlanDef: Loadmill.TestDef): Promise<Loadmill.TestSuiteResult> {
+            return _waitTestPlan(testPlanDef);
         },
         runFunctional(): void {
             console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
@@ -293,14 +365,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         async runFunctionalLocally(config: Loadmill.Configuration,
             paramsOrCallback?: Loadmill.ParamsOrCallback,
             callback?: Loadmill.Callback,
-            testArgs?: Loadmill.Args): Promise<Loadmill.TestResult> {
+            testArgs?: Loadmill.Args): Promise<Loadmill.TestSuiteResult> {
             return _runFunctionalLocally(config, paramsOrCallback, callback, testArgs);
         },
 
         async runFunctionalFolderLocally(
             folderPath: string,
             paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestResult>> {
+            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestSuiteResult>> {
 
             const listOfFiles = getJSONFilesInFolderRecursively(folderPath);
             if (listOfFiles.length === 0) {
@@ -322,6 +394,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _runTestSuite(suite, paramsOrCallback, callback);
         },
 
+        async runTestPlan(
+            testPlan: Loadmill.TestPlanDef,
+            params: Loadmill.Params, 
+            ): Promise<Loadmill.TestDef | undefined> {
+
+            return _runTestPlan(testPlan, params);
+        },
+
         async getExecutableTestSuites(labels?: Array<string> | null): Promise<Array<Loadmill.TestSuiteDef>> {
             return _getExecutableTestSuites(labels);
         },
@@ -333,11 +413,11 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _runAllExecutableTestSuites(options, params, testArgs);
         },
 
-        async junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+        async junitReport(suite: Loadmill.TestSuiteResult | Array<Loadmill.TestSuiteResult>, path?: string): Promise<void> {
             return _junitReport(suite, path);
         },
 
-        async mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+        async mochawesomeReport(suite: Loadmill.TestSuiteResult | Array<Loadmill.TestSuiteResult>, path?: string): Promise<void> {
             return _mochawesomeReport(suite, path);
         },
 
@@ -362,7 +442,7 @@ function isTestInFinalState(body) {
     const { trialResult, result, status } = body;
     return (
         (result || trialResult === false) || // load or functional tests
-        (status && status !== "RUNNING") // test suites
+        (status && status !== "RUNNING") // test suites or test plan
     );
 }
 
@@ -374,6 +454,8 @@ function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
             return `${prefix}/tests/trials/${id}`
         case Loadmill.TYPES.SUITE:
             return `${prefix}/test-suites-runs/${id}`
+        case Loadmill.TYPES.TEST_PLAN:
+            return `${prefix}/test-plans-runs/${id}`
         default: //load
             return `${prefix}/tests/${id}`;
     }
@@ -386,6 +468,8 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
             return `${prefix}/functional/${id}`
         case Loadmill.TYPES.SUITE:
             return `${prefix}/api-tests/test-suite-runs/${id}`
+        case Loadmill.TYPES.TEST_PLAN:
+            return `${prefix}/api-tests/test-plans-runs/${id}`
         default: //load
             return `${prefix}/test/${id}`
     }
@@ -397,6 +481,16 @@ function reductFlowRunsData(flowRuns) {
             id: f.id,
             description: f.description,
             status: f.status
+        }));
+    }
+}
+
+function reductTestSuitesRuns(suitesRuns) {
+    if (suitesRuns) {
+        return suitesRuns.map(s => ({
+            id: s.id,
+            description: s.description,
+            status: s.status
         }));
     }
 }
@@ -452,6 +546,12 @@ namespace Loadmill {
         options?: TestSuiteOptions;
     }
 
+    export interface TestPlanDef {
+        id: string;
+        description?: string;
+        options?: TestPlanOptions;
+    }
+
     export interface TestSuiteOptions {
         additionalDescription?: string;
         labels?: string[] | null;
@@ -459,7 +559,11 @@ namespace Loadmill {
         parallel?: boolean;
     }
 
-    export interface TestResult extends TestDef {
+    export interface TestPlanOptions {
+        additionalDescription?: string;
+    }
+
+    export interface TestSuiteResult extends TestDef {
         url: string;
         passed: boolean;
         description: string
@@ -468,7 +572,22 @@ namespace Loadmill {
         endTime: string;
     }
 
+    export interface TestPlanResult extends TestDef {
+        url: string;
+        passed: boolean;
+        description: string
+        testSuitesRuns?: Array<SuiteRun>;
+        startTime: string;
+        endTime: string;
+    }
+
     export interface FlowRun {
+        id: string;
+        status: string;
+        description: string;
+    }
+
+    export interface SuiteRun {
         id: string;
         status: string;
         description: string;
@@ -486,6 +605,7 @@ namespace Loadmill {
         LOAD = 'load',
         FUNCTIONAL = 'functional',
         SUITE = 'test-suite',
-        LOCAL = 'local'
+        LOCAL = 'local',
+        TEST_PLAN = 'test-plan'
     };
 }
