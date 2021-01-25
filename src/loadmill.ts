@@ -9,13 +9,13 @@ import { junitReport as createJunitReport, mochawesomeReport as createMochawesom
 program
     .usage("<testSuiteId | load-config-file-or-folder> -t <token> [options] [parameter=value...]")
     .description(
-        "Run a test suite (default option) or a load test on loadmill.com.\n  " +
+        "Run a test suite (default option), test plan or a load test on loadmill.com.\n  " +
         "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80'.\n\n  " +
         "Learn more at https://www.npmjs.com/package/loadmill#cli"
     )
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
     .option("-l, --load-test", "Launch a load test.")
-    .option("-t, --test-plan", "Launch a test plan.")
+    .option("--test-plan", "Launch a test plan.")
     .option("-s, --test-suite", "Launch a test suite (default option). If set then a test suite id must be provided instead of config file.")
     .option("-a, --launch-all-test-suites", "Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end")
     .option("-p, --parallel", "Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as -a but in parallel")
@@ -106,7 +106,7 @@ async function start() {
 
 
     if (testSuite) {
-        let results: Array<Loadmill.TestSuiteResult> = [];
+        let results: Array<Loadmill.TestResult> = [];
         const suiteLabels = convertStrToArr(labels)
 
         const failedSuites: Array<string> = [];
@@ -210,7 +210,7 @@ async function start() {
 
     }
     else if (testPlan) {
-        let results: Array<Loadmill.TestPlanResult> = [];
+        let results: Array<Loadmill.TestResult> = [];
 
         const failedSuites: Array<string> = [];
         const testFailed = (msg: string) => {
@@ -238,7 +238,7 @@ async function start() {
 
                 if (wait) {
                     logger.verbose("Waiting for test plan run with id", running.id);
-                    results.push(await loadmill.waitTestPlan(running));
+                    results.push(await loadmill.wait(running));
                 }
 
             } else {
