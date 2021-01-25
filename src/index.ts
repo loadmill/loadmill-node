@@ -267,12 +267,10 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return results;
     }
 
-    // TODO: support test-plan too
     async function _junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
         return createJunitReport(suite, token, path);
     }
 
-    // TODO: support test-plan too
     async function _mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
         return createMochawesomeReport(suite, token, path);
     }

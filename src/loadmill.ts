@@ -210,7 +210,7 @@ async function start() {
 
     }
     else if (testPlan) {
-        let results: Array<Loadmill.TestResult> = [];
+        let res: Loadmill.TestResult;
 
         const failedSuites: Array<string> = [];
         const testFailed = (msg: string) => {
@@ -238,7 +238,42 @@ async function start() {
 
                 if (wait) {
                     logger.verbose("Waiting for test plan run with id", running.id);
-                    results.push(await loadmill.wait(running));
+                    res = await loadmill.wait(running);
+                   
+                    const testPlanRunId = res.id;
+                    const testSuiteRuns = res.testSuitesRuns;
+
+                    if (!quiet) {
+                        logger.log(res ? getObjectAsString(res, colors) : testPlanRunId);
+                    }
+
+                    if (report && testSuiteRuns) {
+                        printTestSuiteRunsReport(res.description, testSuiteRuns, logger, colors);
+                    }
+
+                    if (res && res.passed != null && !res.passed) {
+                        testFailed(`Test plan with id ${testPlanRunId || input} has failed`);
+                    }
+
+                    if (res) {
+                        if (junitReport) {
+                            await createJunitReport(res, token, junitReportPath);
+                        }
+            
+                        // if (mochawesomeReport) {
+                        //     await createMochawesomeReport(res, token, mochawesomeReportPath);
+                        // }
+                    }
+            
+                    if (!isEmptyObj(failedSuites)) {
+                        logger.log("");
+                        logger.error('Test execution errors:');
+                        failedSuites.forEach(s => logger.error(s));
+                        if (bail) {
+                            process.exit(1);
+                        }
+                    }
+
                 }
 
             } else {
@@ -252,44 +287,8 @@ async function start() {
             testFailed(`Couldn't run test plan with id ${input}. ${extInfo ? extInfo : ''}`);
         }
 
-        results.forEach(async res => {
-            const testPlanRunId = res.id;
-            const testSuiteRuns = res.testSuitesRuns;
-
-            if (!quiet) {
-                logger.log(res ? getObjectAsString(res, colors) : testPlanRunId);
-            }
-
-            if (report && testSuiteRuns) {
-                printTestSuiteRunsReport(res.description, testSuiteRuns, logger, colors);
-            }
-
-            if (res && res.passed != null && !res.passed) {
-                testFailed(`Test plan with id ${testPlanRunId || input} has failed`);
-            }
-
-        });
-
-        if (!isEmptyObj(results)) {
-            if (junitReport) {
-                // TODO: refactor for TP
-                // await createJunitReport(results, token, junitReportPath);
-            }
-
-            if (mochawesomeReport) {
-                // TODO: refactor for TP
-                // await createMochawesomeReport(results, token, mochawesomeReportPath);
-            }
-        }
-
-        if (!isEmptyObj(failedSuites)) {
-            logger.log("");
-            logger.error('Test execution errors:');
-            failedSuites.forEach(s => logger.error(s));
-            if (bail) {
-                process.exit(1);
-            }
-        }
+    
+        
     }
 
     else { // if test suite flag is off then the input should be fileOrFolder
