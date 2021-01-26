@@ -1,4 +1,5 @@
 const assert = require('assert');
+const fs = require('fs');
 require('dotenv').config();
 const timeout = 80000;
 const uuidPattern = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
@@ -69,30 +70,28 @@ describe('Validate test-suite', () => {
 
 describe('Validate test-plan', () => {
     it('Validate test-plan', async () => {
-        let isPassed = false;
-        try {
-            const result = await loadmill.runTestPlan({
-                id: testPlanId,
-                options: {
-                    additionalDescription
-                }
-            }, 
-            {"p1":"from-loadmill-node"}
-            );
-    
-            assert.notStrictEqual(result.id.match(uuidPattern), null);
-
-            const res = await loadmill.wait(result);
-            if (res !== undefined) {
-                isPassed = res.passed;
+        const testPlan = await loadmill.runTestPlan({
+            id: testPlanId,
+            options: {
+                additionalDescription
             }
+        },
+            { "p1": "from-loadmill-node" }
+        );
 
-        } catch (err) {
-            console.error("err", err);
-        }
-        finally {
-            assert.strictEqual(isPassed, true);
-        }
+        assert.notStrictEqual(testPlan.id.match(uuidPattern), null);
+
+        res = await loadmill.wait(testPlan);
+        assert.strictEqual(res.passed, true);
+        await loadmill.mochawesomeReport(res, `${__dirname}/tmp/npm`);
+        const data = fs.readFileSync(`${__dirname}/tmp/npm/loadmill/results.json`, { encoding: 'utf8', flag: 'r' });
+        const dataObj = JSON.parse(data);
+        const { suites, tests, passes, failures } = dataObj.stats;
+        assert.strictEqual(suites, 1);
+        assert.strictEqual(tests, 1);
+        assert.strictEqual(passes, 1);
+        assert.strictEqual(failures, 0);
+
     }).timeout(timeout);
 });
 

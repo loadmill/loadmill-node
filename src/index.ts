@@ -179,8 +179,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         testPlan: Loadmill.TestPlanDef,
         params: Loadmill.Params,
     ) {
-        const overrideParameters = params || {};
         const testPlanId = testPlan.id;
+        const overrideParameters = params || {};
         const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
 
         const {
