@@ -53,13 +53,14 @@ const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<L
         };
     }
 
-    const suiteRunsResult = async (suite: Loadmill.SuiteRun) => {
+    const suiteRunsResult = async (suite: Loadmill.TestResult) => {
         return {
             'testsuite': [{
                 _attr: {
                     name: suite.description,
                     status: suite.status,
                     timestamp: (new Date()).toISOString().slice(0, -5),
+                    url: suite.url
                 }
             },
             ]
@@ -74,12 +75,12 @@ const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<L
             suites = testResult.testSuitesRuns;
             resultMapFunc = suiteRunsResult;
         }
-        else{
+        else {
             suites = [testResult]
         }
     } else {
         suites = testResult;
-    } 
+    }
 
     let jsonResults = {
         'testsuites': [{
@@ -364,15 +365,12 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
 };
 
 const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
-    
-    if (!Array.isArray(testResult)) {
-        testResult = [testResult];
-    }
-    const passedSuites = testResult.filter(t => t.passed).length;
-    const failedSuites = testResult.filter(t => !t.passed).length;
-    const duration = testResult.reduce((acc, s) => acc + (+s.endTime - +s.startTime), 0);
+    const suites = !Array.isArray(testResult) ? (testResult.testSuitesRuns || [testResult]) : testResult;
+    const passedSuites = suites.filter(t => t.passed).length;
+    const failedSuites = suites.filter(t => !t.passed).length;
+    const duration = suites.reduce((acc, s) => acc + (+s.endTime - +s.startTime), 0);
 
-    const suitesLength = testResult.length;
+    const suitesLength = suites.length;
     const limit = pLimit(Math.max(3, Math.min(3, suitesLength / 5)));
 
     const res = {
@@ -381,7 +379,7 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
             "tests": suitesLength,
             "passes": passedSuites,
             "failures": failedSuites,
-            "start": new Date(testResult[0].startTime).toISOString(),
+            "start": new Date(suites[0].startTime).toISOString(),
             "end": new Date().toISOString(),
             "pending": 0,
             "testsRegistered": suitesLength,
@@ -396,12 +394,12 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
         "results": [
             {
                 "title": "Loadmill API tests",
-                "suites": await Promise.all(testResult.map(s => limit(() => suiteToMochawesone(s, token)))),
+                "suites": await Promise.all(suites.map(s => limit(() => suiteToMochawesone(s, token)))),
                 "tests": [],
                 "pending": [],
                 "root": true,
                 "_timeout": 0,
-                "uuid": testResult[0].id,
+                "uuid": suites[0].id,
                 "beforeHooks": [],
                 "afterHooks": [],
                 "fullFile": "",

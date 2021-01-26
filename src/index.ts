@@ -75,9 +75,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         testResult.flowRuns = reductFlowRunsData(body.testSuiteFlowRuns);
                     } 
                     else if(testDef.type === Loadmill.TYPES.TEST_PLAN){
-                        testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns)
+                        testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns, testingServer)
                     }
-
 
                     if (callback) {
                         callback(null, testResult);
@@ -267,12 +266,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return results;
     }
 
-    async function _junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
-        return createJunitReport(suite, token, path);
+    async function _junitReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+        return createJunitReport(testResult, token, path);
     }
 
-    async function _mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
-        return createMochawesomeReport(suite, token, path);
+    async function _mochawesomeReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+        return createMochawesomeReport(testResult, token, path);
     }
 
     return {
@@ -374,12 +373,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _runAllExecutableTestSuites(options, params, testArgs);
         },
 
-        async junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
-            return _junitReport(suite, path);
+        async junitReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+            return _junitReport(testResult, path);
         },
 
-        async mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
-            return _mochawesomeReport(suite, path);
+        async mochawesomeReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+            return _mochawesomeReport(testResult, path);
         },
 
     };
@@ -447,12 +446,16 @@ function reductFlowRunsData(flowRuns) {
     }
 }
 
-function reductTestSuitesRuns(suitesRuns) {
+function reductTestSuitesRuns(suitesRuns, testingServer) {
     if (suitesRuns) {
         return suitesRuns.map(s => ({
             id: s.id,
             description: s.description,
-            status: s.status
+            status: s.status,
+            url: getTestWebUrl({id: s.id, type:  Loadmill.TYPES.SUITE}, testingServer),
+            passed: s.status === "PASSED",
+            startTime: s.startTime,
+            endTime: s.endTime
         }));
     }
 }
@@ -530,18 +533,13 @@ namespace Loadmill {
         passed: boolean;
         description: string
         flowRuns?: Array<FlowRun>;
-        testSuitesRuns?: Array<SuiteRun>;
+        testSuitesRuns?: Array<TestResult>;
+        status?: string;
         startTime: string;
         endTime: string;
     }
 
     export interface FlowRun {
-        id: string;
-        status: string;
-        description: string;
-    }
-
-    export interface SuiteRun {
         id: string;
         status: string;
         description: string;

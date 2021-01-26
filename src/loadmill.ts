@@ -260,9 +260,9 @@ async function start() {
                             await createJunitReport(res, token, junitReportPath);
                         }
             
-                        // if (mochawesomeReport) {
-                        //     await createMochawesomeReport(res, token, mochawesomeReportPath);
-                        // }
+                        if (mochawesomeReport) {
+                            await createMochawesomeReport(res, token, mochawesomeReportPath);
+                        }
                     }
             
                     if (!isEmptyObj(failedSuites)) {
