@@ -76,7 +76,9 @@ describe('Validate test-plan', () => {
                 options: {
                     additionalDescription
                 }
-            });
+            }, 
+            {"p1":"from-loadmill-node"}
+            );
     
             assert.notStrictEqual(result.id.match(uuidPattern), null);
 
