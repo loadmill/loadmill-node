@@ -97,6 +97,7 @@ async function start() {
             input,
             loadTest,
             testPlan,
+            fetchFlowRuns,
             testSuite,
             additionalDescription,
             labels,

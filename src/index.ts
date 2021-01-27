@@ -474,8 +474,6 @@ function reductTestSuitesRuns(suitesRuns, testingServer) {
                 }));
             }
 
-            console.log("suiteRun", suiteRun)
-
             return suiteRun;
         });
     }
