@@ -156,6 +156,25 @@ const result = await loadmill.runAllExecutableTestSuites(
 )
 ```
 
+### Running test plan
+
+You can launch an existing test plan by supplying the test plan id:
+
+```js
+const testPlan = await loadmill.runTestPlan(
+    {
+        id: "test-plan-uuid"
+        options: {
+            additionalDescription: "description to add", //optional - added at the end of of each test suite
+        }
+    },
+    { "parameterKey": "overrided value" } //optional
+);
+
+const result = await loadmill.wait(testPlan);       
+loadmill.mochawesomeReport(result); // may add a second arg of path to save the report to.
+```
+
 In case you wish to run all the Loadmill tests in a given folder you can use the `runFolder` API.
 It will execute all the tests **synchronously** (using the `wait` option by default) unless a test has failed.
 This API returns an array of the tests result:
