@@ -17,6 +17,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         _testingServerHost = TESTING_HOST
     } = options as any;
 
+
     const testingServer = "https://" + _testingServerHost;
     const testSuitesAPI = `${testingServer}/api/test-suites`;
     const testPlansAPI = `${testingServer}/api/test-plans`;
@@ -62,7 +63,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 if (isTestInFinalState(body)) {
                     clearInterval(intervalId);
 
-                    const testResult: Loadmill.TestResult  = {
+                    const testResult: Loadmill.TestResult = {
                         ...testDef,
                         url: webUrl,
                         description: body && body.description,
@@ -71,10 +72,10 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         endTime: body.endTime
                     };
 
-                    if(testDef.type === Loadmill.TYPES.SUITE){
+                    if (testDef.type === Loadmill.TYPES.SUITE) {
                         testResult.flowRuns = reductFlowRunsData(body.testSuiteFlowRuns);
-                    } 
-                    else if(testDef.type === Loadmill.TYPES.TEST_PLAN){
+                    }
+                    else if (testDef.type === Loadmill.TYPES.TEST_PLAN || testDef.type === Loadmill.TYPES.FULL_TEST_PLAN) {
                         testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns, testingServer)
                     }
 
@@ -394,6 +395,7 @@ const isTestPassed = (body, type) => {
             return isFunctionalPassed(body.trialResult);
         case Loadmill.TYPES.SUITE:
         case Loadmill.TYPES.TEST_PLAN:
+        case Loadmill.TYPES.FULL_TEST_PLAN:
             return body.status === "PASSED";
         default: //load
             return body.result === 'done';
@@ -417,6 +419,8 @@ function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
             return `${prefix}/test-suites-runs/${id}`
         case Loadmill.TYPES.TEST_PLAN:
             return `${prefix}/test-plans-runs/${id}`
+        case Loadmill.TYPES.FULL_TEST_PLAN:
+            return `${prefix}/test-plans-runs/${id}?fetchAllFlows=true`
         default: //load
             return `${prefix}/tests/${id}`;
     }
@@ -430,6 +434,7 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
         case Loadmill.TYPES.SUITE:
             return `${prefix}/api-tests/test-suite-runs/${id}`
         case Loadmill.TYPES.TEST_PLAN:
+        case Loadmill.TYPES.FULL_TEST_PLAN:
             return `${prefix}/api-tests/test-plans-runs/${id}`
         default: //load
             return `${prefix}/test/${id}`
@@ -448,15 +453,31 @@ function reductFlowRunsData(flowRuns) {
 
 function reductTestSuitesRuns(suitesRuns, testingServer) {
     if (suitesRuns) {
-        return suitesRuns.map(s => ({
-            id: s.id,
-            description: s.description,
-            status: s.status,
-            url: getTestWebUrl({id: s.id, type:  Loadmill.TYPES.SUITE}, testingServer),
-            passed: s.status === "PASSED",
-            startTime: s.startTime,
-            endTime: s.endTime
-        }));
+        return suitesRuns.map(s => {
+            const suiteRun:  Loadmill.TestResult = 
+            {
+                id: s.id,
+                type: Loadmill.TYPES.SUITE,
+                description: s.description,
+                status: s.status,
+                url: getTestWebUrl({ id: s.id, type: Loadmill.TYPES.SUITE }, testingServer),
+                passed: s.status === "PASSED",
+                startTime: s.startTime,
+                endTime: s.endTime
+            }
+
+            if(Array.isArray(s.testSuiteFlowRuns)) {
+                suiteRun.flowRuns = s.testSuiteFlowRuns.map(fr => ({
+                    id: fr.id,
+                    status: fr.status,
+                    description: fr.description
+                }));
+            }
+
+            console.log("suiteRun", suiteRun)
+
+            return suiteRun;
+        });
     }
 }
 
@@ -526,6 +547,7 @@ namespace Loadmill {
 
     export interface TestPlanOptions {
         additionalDescription?: string;
+        fetchFlowRuns?: boolean;
     }
 
     export interface TestResult extends TestDef {
@@ -558,6 +580,7 @@ namespace Loadmill {
         FUNCTIONAL = 'functional',
         SUITE = 'test-suite',
         LOCAL = 'local',
-        TEST_PLAN = 'test-plan'
+        TEST_PLAN = 'test-plan',
+        FULL_TEST_PLAN = 'full-test-plan'
     };
 }

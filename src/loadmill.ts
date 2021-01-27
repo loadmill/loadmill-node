@@ -2,7 +2,7 @@ import * as Loadmill from './index';
 import * as program from 'commander';
 import {
     getJSONFilesInFolderRecursively, getLogger, isUUID, isEmptyObj,
-    getObjectAsString, convertStrToArr, printFlowRunsReport, printTestSuiteRunsReport
+    getObjectAsString, convertStrToArr, printFlowRunsReport, printTestSuitesRunsReport
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
@@ -16,6 +16,7 @@ program
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
     .option("-l, --load-test", "Launch a load test.")
     .option("--test-plan", "Launch a test plan.")
+    .option("--fetch-flow-runs", "test-plan response object will include all flow-runs data")
     .option("-s, --test-suite", "Launch a test suite (default option). If set then a test suite id must be provided instead of config file.")
     .option("-a, --launch-all-test-suites", "Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end")
     .option("-p, --parallel", "Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as -a but in parallel")
@@ -59,6 +60,7 @@ async function start() {
         local,
         loadTest,
         testPlan,
+        fetchFlowRuns,
         additionalDescription,
         labels,
         args: [input, ...rawParams]
@@ -229,7 +231,7 @@ async function start() {
                 {
                     id: input,
                     options: {
-                        additionalDescription
+                        additionalDescription,
                     }
                 },
                 parameters);
@@ -240,15 +242,19 @@ async function start() {
                     logger.verbose("Waiting for test plan run with id", running.id);
                     res = await loadmill.wait(running);
                    
+                    if(fetchFlowRuns && Array.isArray(res.testSuitesRuns)){
+                        res = await loadmill.wait({id: running.id, type: Loadmill.TYPES.FULL_TEST_PLAN});
+                    }
+                    
                     const testPlanRunId = res.id;
-                    const testSuiteRuns = res.testSuitesRuns;
-
+                    const testSuitesRuns = res.testSuitesRuns;
+                    
                     if (!quiet) {
                         logger.log(res ? getObjectAsString(res, colors) : testPlanRunId);
                     }
 
-                    if (report && testSuiteRuns) {
-                        printTestSuiteRunsReport(res.description, testSuiteRuns, logger, colors);
+                    if (report && testSuitesRuns) {
+                        printTestSuitesRunsReport(res.description, testSuitesRuns, logger, colors);
                     }
 
                     if (res && res.passed != null && !res.passed) {

@@ -71,15 +71,18 @@ const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<L
     let resultMapFunc: Function = suiteResult;
 
     if (!Array.isArray(testResult)) {
-        if (testResult.testSuitesRuns) {
-            suites = testResult.testSuitesRuns;
-            resultMapFunc = suiteRunsResult;
+        if (Array.isArray(testResult.testSuitesRuns)) { // testplan
+            suites = testResult.testSuitesRuns;        
+            
+            if(!testResult.testSuitesRuns[0].flowRuns){ // fetchAllFlows=false (default)
+                resultMapFunc = suiteRunsResult;  
+            } 
         }
         else {
-            suites = [testResult]
+            suites = [testResult] // single run
         }
     } else {
-        suites = testResult;
+        suites = testResult; // multiple suites
     }
 
     let jsonResults = {

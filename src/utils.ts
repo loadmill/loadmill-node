@@ -58,7 +58,7 @@ export const printFlowRunsReport = (suiteDescription, suiteFlowRuns, logger, col
     }
 }
 
-export const printTestSuiteRunsReport = (testPlanDescription, testSuitesRuns, logger, colors) => {
+export const printTestSuitesRunsReport = (testPlanDescription, testSuitesRuns, logger, colors) => {
     if (testSuitesRuns) {
         logger.log("");
         logger.log(`Test Plan [${testPlanDescription}] Test Suites Runs report:`);
