@@ -53,30 +53,12 @@ const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<L
         };
     }
 
-    const suiteRunsResult = async (suite: Loadmill.TestResult) => {
-        return {
-            'testsuite': [{
-                _attr: {
-                    name: suite.description,
-                    status: suite.status,
-                    timestamp: (new Date()).toISOString().slice(0, -5),
-                    url: suite.url
-                }
-            },
-            ]
-        };
-    }
-
     let suites;
     let resultMapFunc: Function = suiteResult;
 
     if (!Array.isArray(testResult)) {
         if (Array.isArray(testResult.testSuitesRuns)) { // testplan
-            suites = testResult.testSuitesRuns;        
-            
-            if(!testResult.testSuitesRuns[0].flowRuns){ // fetchAllFlows=false (default)
-                resultMapFunc = suiteRunsResult;  
-            } 
+            suites = testResult.testSuitesRuns;
         }
         else {
             suites = [testResult] // single run
@@ -326,7 +308,7 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
         "fullTitle": flow.description,
         "timedOut": false,
         "duration": flowData.endTime - flowData.startTime,
-        "state": hasPassed? 'passed': 'failed',
+        "state": hasPassed ? 'passed' : 'failed',
         "pass": hasPassed,
         "fail": !hasPassed,
         "isHook": false,
