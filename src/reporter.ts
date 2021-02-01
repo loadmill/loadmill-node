@@ -326,7 +326,7 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
         "fullTitle": flow.description,
         "timedOut": false,
         "duration": flowData.endTime - flowData.startTime,
-        "state": "failed",
+        "state": hasPassed? 'passed': 'failed',
         "pass": hasPassed,
         "fail": !hasPassed,
         "isHook": false,
