@@ -16,7 +16,6 @@ program
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
     .option("-l, --load-test", "Launch a load test.")
     .option("--test-plan", "Launch a test plan.")
-    .option("--fetch-flow-runs", "test-plan response object will include all flow-runs data")
     .option("-s, --test-suite", "Launch a test suite (default option). If set then a test suite id must be provided instead of config file.")
     .option("-a, --launch-all-test-suites", "Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end")
     .option("-p, --parallel", "Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as -a but in parallel")
@@ -60,7 +59,6 @@ async function start() {
         local,
         loadTest,
         testPlan,
-        fetchFlowRuns,
         additionalDescription,
         labels,
         args: [input, ...rawParams]
@@ -97,7 +95,6 @@ async function start() {
             input,
             loadTest,
             testPlan,
-            fetchFlowRuns,
             testSuite,
             additionalDescription,
             labels,
@@ -242,11 +239,7 @@ async function start() {
                 if (wait) {
                     logger.verbose("Waiting for test plan run with id", running.id);
                     res = await loadmill.wait(running);
-                   
-                    if(fetchFlowRuns && Array.isArray(res.testSuitesRuns)){
-                        res = await loadmill.wait({id: running.id, type: Loadmill.TYPES.FULL_TEST_PLAN});
-                    }
-                    
+                                       
                     const testPlanRunId = res.id;
                     const testSuitesRuns = res.testSuitesRuns;
                     

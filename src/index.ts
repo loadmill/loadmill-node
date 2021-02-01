@@ -57,11 +57,16 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         const intervalId = setInterval(async () => {
             try {
-                const { body } = await superagent.get(apiUrl)
+                let { body } = await superagent.get(apiUrl)
                     .auth(token, '');
 
                 if (isTestInFinalState(body)) {
                     clearInterval(intervalId);
+
+                    if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
+                        const { body: bodyWithFlows } = await superagent.get(`${apiUrl}?fetchAllFlows=true`).auth(token, '');
+                        body = bodyWithFlows;
+                    }
 
                     const testResult: Loadmill.TestResult = {
                         ...testDef,
@@ -75,7 +80,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                     if (testDef.type === Loadmill.TYPES.SUITE) {
                         testResult.flowRuns = reductFlowRunsData(body.testSuiteFlowRuns);
                     }
-                    else if (testDef.type === Loadmill.TYPES.TEST_PLAN || testDef.type === Loadmill.TYPES.FULL_TEST_PLAN) {
+                    else if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
                         testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns, testingServer)
                     }
 
@@ -395,7 +400,6 @@ const isTestPassed = (body, type) => {
             return isFunctionalPassed(body.trialResult);
         case Loadmill.TYPES.SUITE:
         case Loadmill.TYPES.TEST_PLAN:
-        case Loadmill.TYPES.FULL_TEST_PLAN:
             return body.status === "PASSED";
         default: //load
             return body.result === 'done';
@@ -409,7 +413,6 @@ function isTestInFinalState(body) {
     );
 }
 
-
 function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
     const prefix = `${server}/api`;
     switch (type) {
@@ -419,8 +422,6 @@ function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
             return `${prefix}/test-suites-runs/${id}`
         case Loadmill.TYPES.TEST_PLAN:
             return `${prefix}/test-plans-runs/${id}`
-        case Loadmill.TYPES.FULL_TEST_PLAN:
-            return `${prefix}/test-plans-runs/${id}?fetchAllFlows=true`
         default: //load
             return `${prefix}/tests/${id}`;
     }
@@ -434,7 +435,6 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
         case Loadmill.TYPES.SUITE:
             return `${prefix}/api-tests/test-suite-runs/${id}`
         case Loadmill.TYPES.TEST_PLAN:
-        case Loadmill.TYPES.FULL_TEST_PLAN:
             return `${prefix}/api-tests/test-plans-runs/${id}`
         default: //load
             return `${prefix}/test/${id}`
@@ -454,7 +454,7 @@ function reductFlowRunsData(flowRuns) {
 function reductTestSuitesRuns(suitesRuns, testingServer) {
     if (suitesRuns) {
         return suitesRuns.map(s => {
-            const suiteRun:  Loadmill.TestResult = 
+            const suiteRun: Loadmill.TestResult =
             {
                 id: s.id,
                 type: Loadmill.TYPES.SUITE,
@@ -466,7 +466,7 @@ function reductTestSuitesRuns(suitesRuns, testingServer) {
                 endTime: s.endTime
             }
 
-            if(Array.isArray(s.testSuiteFlowRuns)) {
+            if (Array.isArray(s.testSuiteFlowRuns)) {
                 suiteRun.flowRuns = s.testSuiteFlowRuns.map(fr => ({
                     id: fr.id,
                     status: fr.status,
@@ -578,7 +578,6 @@ namespace Loadmill {
         FUNCTIONAL = 'functional',
         SUITE = 'test-suite',
         LOCAL = 'local',
-        TEST_PLAN = 'test-plan',
-        FULL_TEST_PLAN = 'full-test-plan'
+        TEST_PLAN = 'test-plan'
     };
 }
