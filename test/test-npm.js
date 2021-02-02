@@ -69,7 +69,7 @@ describe('Validate test-suite', () => {
 });
 
 describe('Validate test-plan', () => {
-    it('Validate test-plan', async () => {
+    it('Validate test-plan with mochawesomeReport', async () => {
         const testPlan = await loadmill.runTestPlan({
             id: testPlanId,
             options: {
@@ -91,6 +91,14 @@ describe('Validate test-plan', () => {
         assert.strictEqual(tests, 1);
         assert.strictEqual(passes, 1);
         assert.strictEqual(failures, 0);
+
+        const flows = dataObj.results[0].suites[0].tests;
+        assert.strictEqual(flows.length, 3);
+        flows.map(f => {
+            assert.strictEqual(f.pass, true);
+            assert.strictEqual(f.fail, false);
+            assert.strictEqual(f.state, "passed");
+        })
 
     }).timeout(timeout);
 });
