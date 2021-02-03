@@ -140,7 +140,7 @@ loadmill.run("./load-tests/simple.json")
 
 ### Running multiple tests
 
-You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle swtiched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default). 
+You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle switched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default). 
 ```js
 /**
  * @returns [{id: string, type: 'test-suite', passed: boolean, url: string}]
