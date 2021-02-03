@@ -5,4 +5,5 @@ lib/utils.d.ts
 .vscode
 test/
 .env
-
+loadmill/results.json 
+test-results/loadmill/results.xml
