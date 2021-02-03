@@ -13,11 +13,7 @@ import includes = require('lodash/includes');
 
 import { TESTING_HOST } from './utils';
 
-const generateJunitJsonReport = async (suiteOrSuites: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
-
-    if (!Array.isArray(suiteOrSuites)) {
-        suiteOrSuites = [suiteOrSuites];
-    }
+const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
 
     const flowResult = async (f: Loadmill.FlowRun) => {
         const flowRun: any = {
@@ -57,13 +53,28 @@ const generateJunitJsonReport = async (suiteOrSuites: Loadmill.TestResult | Arra
         };
     }
 
+    let suites;
+    let resultMapFunc: Function = suiteResult;
+
+    if (!Array.isArray(testResult)) {
+        if (Array.isArray(testResult.testSuitesRuns)) { // testplan
+            suites = testResult.testSuitesRuns;
+        }
+        else {
+            suites = [testResult] // single run
+        }
+    } else {
+        suites = testResult; // multiple suites
+    }
+
     let jsonResults = {
         'testsuites': [{
             _attr: {
                 name: 'Loadmill suites run',
             }
         },
-        ...await Promise.all(suiteOrSuites.map(suiteResult))]
+        ...await Promise.all((suites).map(resultMapFunc))
+        ]
     };
 
     return jsonResults
@@ -152,12 +163,12 @@ const toFailedFlowRunReport = (flowRun, formater) => {
                                 actual,
                                 formater
                             );
-                            errs.push({desc: flowFailedText, ass: assErr});
+                            errs.push({ desc: flowFailedText, ass: assErr });
                         }
                     }
                 });
                 if (isEmpty(errs)) {
-                    errs.push({desc: flowFailedText});
+                    errs.push({ desc: flowFailedText });
                 }
             }
         });
@@ -281,7 +292,7 @@ const toMochawesomeFailedFlow = (flowRun) => {
         "negate": false,
         "_message": "",
         "generatedMessage": false,
-        "diff": errs[0].desc + errs.reduce((acc, e) => `${acc} \n ${e.ass ? `\n ${e.ass}`: ''}`, '')
+        "diff": errs[0].desc + errs.reduce((acc, e) => `${acc} \n ${e.ass ? `\n ${e.ass}` : ''}`, '')
     };
 };
 
@@ -297,7 +308,7 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
         "fullTitle": flow.description,
         "timedOut": false,
         "duration": flowData.endTime - flowData.startTime,
-        "state": "failed",
+        "state": hasPassed ? 'passed' : 'failed',
         "pass": hasPassed,
         "fail": !hasPassed,
         "isHook": false,
@@ -338,15 +349,13 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
     }
 };
 
-const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
-    if (!Array.isArray(suiteOrSuites)) {
-        suiteOrSuites = [suiteOrSuites];
-    }
-    const passedSuites = suiteOrSuites.filter(t => t.passed).length;
-    const failedSuites = suiteOrSuites.filter(t => !t.passed).length;
-    const duration = suiteOrSuites.reduce((acc, s) => acc + (+s.endTime - +s.startTime), 0);
+const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
+    const suites = !Array.isArray(testResult) ? (testResult.testSuitesRuns || [testResult]) : testResult;
+    const passedSuites = suites.filter(t => t.passed).length;
+    const failedSuites = suites.filter(t => !t.passed).length;
+    const duration = suites.reduce((acc, s) => acc + (+s.endTime - +s.startTime), 0);
 
-    const suitesLength = suiteOrSuites.length;
+    const suitesLength = suites.length;
     const limit = pLimit(Math.max(3, Math.min(3, suitesLength / 5)));
 
     const res = {
@@ -355,8 +364,8 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
             "tests": suitesLength,
             "passes": passedSuites,
             "failures": failedSuites,
-            "start": new Date(suiteOrSuites[0].startTime).toISOString(),
-            "end":  new Date().toISOString(),
+            "start": new Date(suites[0].startTime).toISOString(),
+            "end": new Date().toISOString(),
             "pending": 0,
             "testsRegistered": suitesLength,
             "pendingPercent": 0,
@@ -370,12 +379,12 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
         "results": [
             {
                 "title": "Loadmill API tests",
-                "suites": await Promise.all(suiteOrSuites.map(s => limit(() => suiteToMochawesone(s, token)))),
+                "suites": await Promise.all(suites.map(s => limit(() => suiteToMochawesone(s, token)))),
                 "tests": [],
                 "pending": [],
                 "root": true,
                 "_timeout": 0,
-                "uuid": suiteOrSuites[0].id,
+                "uuid": suites[0].id,
                 "beforeHooks": [],
                 "afterHooks": [],
                 "fullFile": "",
@@ -391,22 +400,22 @@ const generateMochawesomeReport = async (suiteOrSuites: Loadmill.TestResult | Ar
     return res;
 };
 
-export const junitReport = async (suite: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string, path?: string) => {
-    if (!suite) {
+export const junitReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string, path?: string) => {
+    if (!testResult) {
         return;
     }
-    const jsonResults = await generateJunitJsonReport(suite, token);
+    const jsonResults = await generateJunitJsonReport(testResult, token);
     const asXml = xml(jsonResults, { indent: '  ', declaration: true });
     const resolvedPath = resolvePath(path ? path : './test-results', 'xml');
     ensureDirectoryExistence(resolvedPath);
     fs.writeFileSync(resolvedPath, asXml);
 }
 
-export const mochawesomeReport = async (suite: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string, path?: string) => {
-    if (!suite) {
+export const mochawesomeReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string, path?: string) => {
+    if (!testResult) {
         return;
     }
-    const jsonResults = await generateMochawesomeReport(suite, token);
+    const jsonResults = await generateMochawesomeReport(testResult, token);
     const resolvedPath = resolvePath(path ? path : './mochawesome-results', 'json');
     ensureDirectoryExistence(resolvedPath);
     fs.writeFileSync(resolvedPath, JSON.stringify(jsonResults, null, 2));

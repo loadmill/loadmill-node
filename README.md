@@ -140,7 +140,7 @@ loadmill.run("./load-tests/simple.json")
 
 ### Running multiple tests
 
-You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle swtiched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default). 
+You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle switched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default). 
 ```js
 /**
  * @returns [{id: string, type: 'test-suite', passed: boolean, url: string}]
@@ -154,6 +154,24 @@ const result = await loadmill.runAllExecutableTestSuites(
     { "parameterKey": "overrided value" }, //optional
     { verbose: true } // optional
 )
+```
+
+### Running test plan
+
+You can launch an existing test plan by supplying the test plan id:
+
+```js
+const testPlan = await loadmill.runTestPlan(
+    {
+        id: "test-plan-uuid"
+        options: {
+            additionalDescription: "description to add", //optional - added at the end of of each test suite
+        }
+    },
+    { "parameterKey": "overrided value" } //optional
+);
+
+const result = await loadmill.wait(testPlan);       
 ```
 
 In case you wish to run all the Loadmill tests in a given folder you can use the `runFolder` API.
@@ -203,6 +221,13 @@ You can tell loadmill to run flows that are assigned to a specific label with th
 loadmill <test-suite-id> --test-suite -t <token> --labels "label1,label2"
 ```
 
+### Test Plan
+
+You may launch a test plan by setting the --test-plan option:
+
+```
+loadmill --test-plan <test-plan-id> -w -v -t <token> --report --colors
+```
 
 ### Load Tests
 
@@ -239,11 +264,12 @@ Full list of command line options:
 - `-h, --help` Output usage information.
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. 
+- `--test-plan` Launch a test plan. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
 - `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end (executing one by one). 
 - `-p, --parallel` Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
-- `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
+- `--labels <labels>`, Run flows that are assigned to a specific label (when running a test suite). Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
 - `-w, --wait` Wait for the test to finish. 
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).

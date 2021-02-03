@@ -17,8 +17,10 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         _testingServerHost = TESTING_HOST
     } = options as any;
 
+
     const testingServer = "https://" + _testingServerHost;
     const testSuitesAPI = `${testingServer}/api/test-suites`;
+    const testPlansAPI = `${testingServer}/api/test-plans`;
 
     async function _runFolderSync(
         listOfFiles: string[],
@@ -55,21 +57,32 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         const intervalId = setInterval(async () => {
             try {
-                const { body } = await superagent.get(apiUrl)
+                let { body } = await superagent.get(apiUrl)
                     .auth(token, '');
 
                 if (isTestInFinalState(body)) {
                     clearInterval(intervalId);
 
-                    const testResult = {
+                    if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
+                        const { body: bodyWithFlows } = await superagent.get(`${apiUrl}?fetchAllFlows=true`).auth(token, '');
+                        body = bodyWithFlows;
+                    }
+
+                    const testResult: Loadmill.TestResult = {
                         ...testDef,
                         url: webUrl,
                         description: body && body.description,
                         passed: isTestPassed(body, testDef.type),
-                        flowRuns: reductFlowRunsData(body.testSuiteFlowRuns),
                         startTime: body.startTime,
                         endTime: body.endTime
                     };
+
+                    if (testDef.type === Loadmill.TYPES.SUITE) {
+                        testResult.flowRuns = reductFlowRunsData(body.testSuiteFlowRuns);
+                    }
+                    else if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
+                        testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns, testingServer)
+                    }
 
                     if (callback) {
                         callback(null, testResult);
@@ -168,6 +181,30 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         );
     }
 
+    async function _runTestPlan(
+        testPlan: Loadmill.TestPlanDef,
+        params: Loadmill.Params,
+    ) {
+        const testPlanId = testPlan.id;
+        const overrideParameters = params || {};
+        const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
+
+        const {
+            body: {
+                testPlanRunId,
+                err
+            }
+        } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
+            .send({ overrideParameters, additionalDescription })
+            .auth(token, '');
+
+        if (err || !testPlanRunId) {
+            console.error(err ? JSON.stringify(err) : "The server encountered an error while handling the request");
+            return;
+        }
+        return { id: testPlanRunId, type: Loadmill.TYPES.TEST_PLAN };
+    }
+
     async function _getExecutableTestSuites(labels?: Array<string> | null): Promise<Array<Loadmill.TestSuiteDef>> {
         let url = `${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`;
         if (labels) {
@@ -214,8 +251,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             const suitesPromises = suites.map(suite => limit(() => {
                 logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
                 return _runTestSuite({ ...suite, options }, params)
-                .then(_wait)
-                .then((res) => { results.push(res); });
+                    .then(_wait)
+                    .then((res) => { results.push(res); });
             }));
             await Promise.all<void>(suitesPromises);
         } else {
@@ -235,12 +272,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return results;
     }
 
-    async function _junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
-        return createJunitReport(suite, token, path);
+    async function _junitReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+        return createJunitReport(testResult, token, path);
     }
 
-    async function _mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
-        return createMochawesomeReport(suite, token, path);
+    async function _mochawesomeReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+        return createMochawesomeReport(testResult, token, path);
     }
 
     return {
@@ -282,6 +319,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
             return _wait(testDefOrId, callback);
         },
+
         runFunctional(): void {
             console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
         },
@@ -322,6 +360,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _runTestSuite(suite, paramsOrCallback, callback);
         },
 
+        async runTestPlan(
+            testPlan: Loadmill.TestPlanDef,
+            params: Loadmill.Params,
+        ): Promise<Loadmill.TestDef | undefined> {
+
+            return _runTestPlan(testPlan, params);
+        },
+
         async getExecutableTestSuites(labels?: Array<string> | null): Promise<Array<Loadmill.TestSuiteDef>> {
             return _getExecutableTestSuites(labels);
         },
@@ -333,12 +379,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _runAllExecutableTestSuites(options, params, testArgs);
         },
 
-        async junitReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
-            return _junitReport(suite, path);
+        async junitReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+            return _junitReport(testResult, path);
         },
 
-        async mochawesomeReport(suite: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
-            return _mochawesomeReport(suite, path);
+        async mochawesomeReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+            return _mochawesomeReport(testResult, path);
         },
 
     };
@@ -353,6 +399,7 @@ const isTestPassed = (body, type) => {
         case Loadmill.TYPES.FUNCTIONAL:
             return isFunctionalPassed(body.trialResult);
         case Loadmill.TYPES.SUITE:
+        case Loadmill.TYPES.TEST_PLAN:
             return body.status === "PASSED";
         default: //load
             return body.result === 'done';
@@ -362,10 +409,9 @@ function isTestInFinalState(body) {
     const { trialResult, result, status } = body;
     return (
         (result || trialResult === false) || // load or functional tests
-        (status && status !== "RUNNING") // test suites
+        (status && status !== "RUNNING") // test suites or test plan
     );
 }
-
 
 function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
     const prefix = `${server}/api`;
@@ -374,6 +420,8 @@ function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
             return `${prefix}/tests/trials/${id}`
         case Loadmill.TYPES.SUITE:
             return `${prefix}/test-suites-runs/${id}`
+        case Loadmill.TYPES.TEST_PLAN:
+            return `${prefix}/test-plans-runs/${id}`
         default: //load
             return `${prefix}/tests/${id}`;
     }
@@ -386,6 +434,8 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
             return `${prefix}/functional/${id}`
         case Loadmill.TYPES.SUITE:
             return `${prefix}/api-tests/test-suite-runs/${id}`
+        case Loadmill.TYPES.TEST_PLAN:
+            return `${prefix}/api-tests/test-plans-runs/${id}`
         default: //load
             return `${prefix}/test/${id}`
     }
@@ -398,6 +448,34 @@ function reductFlowRunsData(flowRuns) {
             description: f.description,
             status: f.status
         }));
+    }
+}
+
+function reductTestSuitesRuns(suitesRuns, testingServer) {
+    if (suitesRuns) {
+        return suitesRuns.map(s => {
+            const suiteRun: Loadmill.TestResult =
+            {
+                id: s.id,
+                type: Loadmill.TYPES.SUITE,
+                description: s.description,
+                status: s.status,
+                url: getTestWebUrl({ id: s.id, type: Loadmill.TYPES.SUITE }, testingServer),
+                passed: s.status === "PASSED",
+                startTime: s.startTime,
+                endTime: s.endTime
+            }
+
+            if (Array.isArray(s.testSuiteFlowRuns)) {
+                suiteRun.flowRuns = s.testSuiteFlowRuns.map(fr => ({
+                    id: fr.id,
+                    status: fr.status,
+                    description: fr.description
+                }));
+            }
+
+            return suiteRun;
+        });
     }
 }
 
@@ -452,6 +530,12 @@ namespace Loadmill {
         options?: TestSuiteOptions;
     }
 
+    export interface TestPlanDef {
+        id: string;
+        description?: string;
+        options?: TestPlanOptions;
+    }
+
     export interface TestSuiteOptions {
         additionalDescription?: string;
         labels?: string[] | null;
@@ -459,11 +543,18 @@ namespace Loadmill {
         parallel?: boolean;
     }
 
+    export interface TestPlanOptions {
+        additionalDescription?: string;
+        fetchFlowRuns?: boolean;
+    }
+
     export interface TestResult extends TestDef {
         url: string;
         passed: boolean;
         description: string
         flowRuns?: Array<FlowRun>;
+        testSuitesRuns?: Array<TestResult>;
+        status?: string;
         startTime: string;
         endTime: string;
     }
@@ -486,6 +577,7 @@ namespace Loadmill {
         LOAD = 'load',
         FUNCTIONAL = 'functional',
         SUITE = 'test-suite',
-        LOCAL = 'local'
+        LOCAL = 'local',
+        TEST_PLAN = 'test-plan'
     };
 }

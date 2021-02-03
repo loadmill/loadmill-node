@@ -24,3 +24,9 @@ package-lock.json
 
 # prepare folder
 lib/
+
+# Mocha
+results.json
+
+# Junit
+results.xml
