@@ -226,7 +226,7 @@ loadmill <test-suite-id> --test-suite -t <token> --labels "label1,label2"
 You may launch a test plan by setting the --test-plan option:
 
 ```
-loadmill --test-plan <test-plan-id> -j --junit-report-path="./test/tmp/cli" -m --mochawesome-report-path="./test/tmp/cli" -w -v -t <token> --report --colors
+loadmill --test-plan <test-plan-id> -w -v -t <token> --report --colors
 ```
 
 ### Load Tests
