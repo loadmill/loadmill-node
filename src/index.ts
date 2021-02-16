@@ -187,6 +187,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     ) {
         const testPlanId = testPlan.id;
         const overrideParameters = params || {};
+        const labels = testPlan.options && testPlan.options.labels && filterLabels(testPlan.options.labels);
         const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
 
         const {
@@ -195,7 +196,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 err
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ overrideParameters, additionalDescription })
+            .send({ overrideParameters, additionalDescription, labels })
             .auth(token, '');
 
         if (err || !testPlanRunId) {
@@ -518,36 +519,31 @@ namespace Loadmill {
     export interface LoadmillOptions {
         token: string;
     }
-
     export interface TestDef {
         id: string;
         type: string;
     }
-
     export interface TestSuiteDef {
         id: string;
         description?: string;
         options?: TestSuiteOptions;
     }
-
     export interface TestPlanDef {
         id: string;
         description?: string;
         options?: TestPlanOptions;
     }
-
     export interface TestSuiteOptions {
         additionalDescription?: string;
         labels?: string[] | null;
         failGracefully?: boolean;
         parallel?: boolean;
     }
-
     export interface TestPlanOptions {
         additionalDescription?: string;
+        labels?: string[] | null;
         fetchFlowRuns?: boolean;
     }
-
     export interface TestResult extends TestDef {
         url: string;
         passed: boolean;
