@@ -356,7 +356,7 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
     const duration = suites.reduce((acc, s) => acc + (+s.endTime - +s.startTime), 0);
 
     const suitesLength = suites.length;
-    const limit = pLimit(Math.max(3, Math.min(3, suitesLength / 5)));
+    const limit = pLimit(3);
 
     const res = {
         "stats": {
@@ -364,12 +364,12 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
             "tests": suitesLength,
             "passes": passedSuites,
             "failures": failedSuites,
-            "start": new Date(suites[0].startTime).toISOString(),
+            "start": (suites[0]? new Date(suites[0].startTime) : new Date()).toISOString(),
             "end": new Date().toISOString(),
             "pending": 0,
             "testsRegistered": suitesLength,
             "pendingPercent": 0,
-            "passPercent": passedSuites / suitesLength,
+            "passPercent": suitesLength == 0 ? 0 : passedSuites / suitesLength,
             "other": 0,
             "hasOther": false,
             "skipped": 0,
@@ -384,7 +384,7 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
                 "pending": [],
                 "root": true,
                 "_timeout": 0,
-                "uuid": suites[0].id,
+                "uuid": suites[0]? suites[0].id : '123e4567-e89b-12d3-a456-426652340000',
                 "beforeHooks": [],
                 "afterHooks": [],
                 "fullFile": "",

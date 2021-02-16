@@ -211,6 +211,7 @@ async function start() {
     }
     else if (testPlan) {
         let res: Loadmill.TestResult;
+        const planLabels = convertStrToArr(labels)
 
         const failedSuites: Array<string> = [];
         const testFailed = (msg: string) => {
@@ -230,6 +231,7 @@ async function start() {
                     id: input,
                     options: {
                         additionalDescription,
+                        labels: planLabels
                     }
                 },
                 parameters);
