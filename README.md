@@ -164,8 +164,9 @@ You can launch an existing test plan by supplying the test plan id:
 const testPlan = await loadmill.runTestPlan(
     {
         id: "test-plan-uuid"
-        options: {
-            additionalDescription: "description to add", //optional - added at the end of of each test suite
+        options: { //optional
+            additionalDescription: "description to add", // added at the end of of each test suite
+            labels: ["label1", "label2"] // run suites that have flows assigned to specific label/s
         }
     },
     { "parameterKey": "overrided value" } //optional
@@ -226,7 +227,7 @@ loadmill <test-suite-id> --test-suite -t <token> --labels "label1,label2"
 You may launch a test plan by setting the --test-plan option:
 
 ```
-loadmill --test-plan <test-plan-id> -w -v -t <token> --report --colors
+loadmill  <test-plan-id> --test-plan -w -v -t <token> --report --colors --labels "label1,label2"
 ```
 
 ### Load Tests
@@ -269,7 +270,7 @@ Full list of command line options:
 - `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end (executing one by one). 
 - `-p, --parallel` Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
-- `--labels <labels>`, Run flows that are assigned to a specific label (when running a test suite). Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
+- `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
 - `-w, --wait` Wait for the test to finish. 
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).
