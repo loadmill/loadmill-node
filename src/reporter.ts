@@ -369,7 +369,7 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
             "pending": 0,
             "testsRegistered": suitesLength,
             "pendingPercent": 0,
-            "passPercent": suitesLength == 0 ? 0 : passedSuites / suitesLength,
+            "passPercent": suitesLength == 0 ? 0 : (passedSuites / suitesLength) * 100,
             "other": 0,
             "hasOther": false,
             "skipped": 0,
