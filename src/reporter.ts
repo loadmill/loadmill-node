@@ -36,6 +36,7 @@ const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<L
     const suiteResult = async (suite: Loadmill.TestResult) => {
         const { flowRuns = [] } = suite;
         const failures = flowRuns.filter((f: any) => f.status !== 'PASSED').length;
+        const limit = pLimit(3);
 
         return {
             'testsuite': [{
@@ -48,13 +49,12 @@ const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<L
                     url: suite.url
                 }
             },
-            ... await Promise.all(flowRuns.map(flowResult))
+            ...await Promise.all(flowRuns.map(f => limit(() => flowResult(f))))
             ]
         };
     }
 
     let suites;
-    let resultMapFunc: Function = suiteResult;
 
     if (!Array.isArray(testResult)) {
         if (Array.isArray(testResult.testSuitesRuns)) { // testplan
@@ -67,13 +67,15 @@ const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<L
         suites = testResult; // multiple suites
     }
 
+    const limit = pLimit(3);
+
     let jsonResults = {
         'testsuites': [{
             _attr: {
                 name: 'Loadmill suites run',
             }
         },
-        ...await Promise.all((suites).map(resultMapFunc))
+        ...await Promise.all(suites.map(s => limit(() => suiteResult(s))))
         ]
     };
 
@@ -327,8 +329,7 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
     const passedFlows = flows.filter(f => f.status === 'PASSED').map(f => f.id);
     const failedFlows = flows.filter(f => f.status === 'FAILED').map(f => f.id);
 
-    const flowsLength = flows.length;
-    const limit = pLimit(Math.max(3, Math.min(3, flowsLength / 5)));
+    const limit = pLimit(3);
 
     return {
         "title": suite.description,
