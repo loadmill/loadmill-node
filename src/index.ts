@@ -158,6 +158,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const additionalDescription = suite.options && suite.options.additionalDescription;
         const labels = suite.options && suite.options.labels && filterLabels(suite.options.labels);
         const failGracefully = suite.options && suite.options.failGracefully;
+        const pool = suite.options && suite.options.pool;
 
         return wrap(
             async () => {
@@ -167,7 +168,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         err
                     }
                 } = await superagent.post(`${testSuitesAPI}/${suiteId}/run${failGracefully ? '?failGracefully=true' : ''}`)
-                    .send({ overrideParameters, additionalDescription, labels })
+                    .send({ overrideParameters, additionalDescription, labels, pool })
                     .auth(token, '');
 
                 if (err || !testSuiteRunId) {
@@ -189,6 +190,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const overrideParameters = params || {};
         const labels = testPlan.options && testPlan.options.labels && filterLabels(testPlan.options.labels);
         const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
+        const pool = testPlan.options && testPlan.options.pool;
 
         const {
             body: {
@@ -196,7 +198,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 err
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ overrideParameters, additionalDescription, labels })
+            .send({ overrideParameters, additionalDescription, labels, pool })
             .auth(token, '');
 
         if (err || !testPlanRunId) {
@@ -538,11 +540,13 @@ namespace Loadmill {
         labels?: string[] | null;
         failGracefully?: boolean;
         parallel?: boolean;
+        pool?: string;
     }
     export interface TestPlanOptions {
         additionalDescription?: string;
         labels?: string[] | null;
         fetchFlowRuns?: boolean;
+        pool?: string;
     }
     export interface TestResult extends TestDef {
         url: string;
