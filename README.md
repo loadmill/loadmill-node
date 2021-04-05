@@ -55,7 +55,8 @@ const result = await loadmill.runTestSuite(
         id: "test-suite-uuid",
         options: { //optional
             additionalDescription: "description to add", // will be added to the end of the test suite description.
-            labels: ["label1", "label2"] //run flows that are assigned to specific label/s
+            labels: ["label1", "label2"], //run flows that are assigned to specific label/s
+            pool: "some-pool-name" // Execute tests from a dedicated agent's pool (when using private agent)
         }
     },
     {
@@ -149,7 +150,8 @@ const result = await loadmill.runAllExecutableTestSuites(
     {
         additionalDescription: "description to add", //optional - added at the end of the test suite description.
         labels: ["label1", "label2"], //optional - run flows that are assigned to specific label/s
-        parallel: true //optional - if true will run all suites in parallel
+        parallel: true, //optional - if true will run all suites in parallel
+        pool: "some-pool-name" // Execute tests from a dedicated agent's pool (when using private agent)
     },
     { "parameterKey": "overrided value" }, //optional
     { verbose: true } // optional
@@ -166,7 +168,8 @@ const testPlan = await loadmill.runTestPlan(
         id: "test-plan-uuid"
         options: { //optional
             additionalDescription: "description to add", // added at the end of of each test suite
-            labels: ["label1", "label2"] // run suites that have flows assigned to specific label/s
+            labels: ["label1", "label2"], // run suites that have flows assigned to specific label/s
+            pool: "some-pool-name" // Execute tests from a dedicated agent's pool (when using private agent)
         }
     },
     { "parameterKey": "overrided value" } //optional
@@ -271,6 +274,7 @@ Full list of command line options:
 - `-p, --parallel` Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
+- `--pool <pool>` Execute tests from a dedicated agent's pool (when using private agent). 
 - `-w, --wait` Wait for the test to finish. 
 - `-n, --no-bail` Return exit code 0 even if test fails.
 - `-q, --quiet` Do not print out anything (except errors).

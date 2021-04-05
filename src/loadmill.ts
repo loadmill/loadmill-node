@@ -21,6 +21,7 @@ program
     .option("-p, --parallel", "Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as -a but in parallel")
     .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
     .option("--labels <labels>", "Run flows that are assigned to a specific label (when running a test suite).. Multiple labels can be provided by seperated them with ',' (e.g. 'label1,label2').")
+    .option("--pool <pool>", "Execute tests from a dedicated agent's pool (when using private agent)")
     .option("-w, --wait", "Wait for the test to finish.")
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
@@ -61,6 +62,7 @@ async function start() {
         testPlan,
         additionalDescription,
         labels,
+        pool,
         args: [input, ...rawParams]
     } = program;
 
@@ -98,6 +100,7 @@ async function start() {
             testSuite,
             additionalDescription,
             labels,
+            pool,
             parameters,
         });
     }
@@ -124,6 +127,7 @@ async function start() {
                         additionalDescription,
                         labels: suiteLabels,
                         parallel,
+                        pool,
                     },
                     parameters,
                     { verbose, colors }
@@ -147,7 +151,7 @@ async function start() {
                     {
                         id: input,
                         options: {
-                            additionalDescription, labels: suiteLabels
+                            additionalDescription, labels: suiteLabels, pool
                         }
                     },
                     parameters);
@@ -231,7 +235,8 @@ async function start() {
                     id: input,
                     options: {
                         additionalDescription,
-                        labels: planLabels
+                        labels: planLabels,
+                        pool,
                     }
                 },
                 parameters);
