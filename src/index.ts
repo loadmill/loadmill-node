@@ -438,7 +438,7 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
         case Loadmill.TYPES.SUITE:
             return `${prefix}/api-tests/test-suite-runs/${id}`
         case Loadmill.TYPES.TEST_PLAN:
-            return `${prefix}/api-tests/test-plans-runs/${id}`
+            return `${prefix}/api-tests/test-plan-runs/${id}`
         default: //load
             return `${prefix}/test/${id}`
     }

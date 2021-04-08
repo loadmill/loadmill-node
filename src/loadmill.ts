@@ -1,7 +1,7 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
 import {
-    getJSONFilesInFolderRecursively, getLogger, isUUID, isEmptyObj,
+    getJSONFilesInFolderRecursively, getLogger, isUUID, isEmptyObj, isString,
     getObjectAsString, convertStrToArr, printFlowRunsReport, printTestSuitesRunsReport
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
@@ -72,6 +72,11 @@ async function start() {
         validationFailed("No API token provided.");
     }
 
+    if (launchAllTestSuites && isString(input) && !isUUID(input)) {
+        rawParams.push(input);
+        input = '';
+    }
+
     const parameters = toParams(rawParams);
 
     const testSuite = !loadTest && !local && !testPlan;
@@ -107,7 +112,6 @@ async function start() {
 
     const loadmill = Loadmill({ token });
 
-
     if (testSuite) {
         let results: Array<Loadmill.TestResult> = [];
         const suiteLabels = convertStrToArr(labels)
@@ -122,6 +126,7 @@ async function start() {
 
         if (launchAllTestSuites || parallel) {
             try {
+                logger.warn(`Deprecation warning: --launch-all-test-suites (also -a) option is deprecated. Please use --test-plan instead.`);
                 results = await loadmill.runAllExecutableTestSuites(
                     {
                         additionalDescription,
