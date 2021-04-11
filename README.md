@@ -141,6 +141,8 @@ loadmill.run("./load-tests/simple.json")
 
 ### Running multiple tests
 
+**Deprecation warning** - `runAllExecutableTestSuites` option is deprecated. Please use Test Plans instead.
+
 You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle switched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default). 
 ```js
 /**
@@ -258,8 +260,6 @@ You may set loadmill parameter values via command line arguments by passing `nam
 ```
 loadmill parametrized_test.json host=test.myapp.com port=4443 -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
-### Functional Tests - Deprecation warning
-Functional tests, i.e. `runFunctional` etc..., are deprected. We recommend using test suites insted
 
 ### CLI Options
 
@@ -270,8 +270,8 @@ Full list of command line options:
 - `-l, --load-test` Launch a load test. 
 - `--test-plan` Launch a test plan. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
-- `-a, --launch-all-test-suites` Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end (executing one by one). 
-- `-p, --parallel` Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. Max concurrency is 10.
+- `-a, --launch-all-test-suites` (deprecated) Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end (executing one by one). 
+- `-p, --parallel` (deprecated) Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
 - `--pool <pool>` Execute tests from a dedicated agent's pool (when using private agent). 

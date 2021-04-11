@@ -126,9 +126,7 @@ async function start() {
 
         if (launchAllTestSuites || parallel) {
             try {
-                launchAllTestSuites && logger.warn(
-                    `Deprecation warning: --launch-all-test-suites (also -a) option is deprecated. Please use --test-plan instead.`
-                );
+                logger.warn(`Deprecation warning: --launch-all-test-suites (also -a) option is deprecated. Please use Test Plans for multiple suites execution.`);
 
                 results = await loadmill.runAllExecutableTestSuites(
                     {
