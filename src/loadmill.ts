@@ -72,7 +72,7 @@ async function start() {
         validationFailed("No API token provided.");
     }
 
-    if (launchAllTestSuites && isString(input) && !isUUID(input)) {
+    if ((launchAllTestSuites || parallel) && isString(input) && !isUUID(input)) {
         rawParams.push(input);
         input = '';
     }
@@ -126,7 +126,8 @@ async function start() {
 
         if (launchAllTestSuites || parallel) {
             try {
-                logger.warn(`Deprecation warning: --launch-all-test-suites (also -a) option is deprecated. Please use --test-plan instead.`);
+                logger.warn(`Deprecation warning: --launch-all-test-suites (also -a) option is deprecated. Please use Test Plans for multiple suites execution.`);
+
                 results = await loadmill.runAllExecutableTestSuites(
                     {
                         additionalDescription,
