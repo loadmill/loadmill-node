@@ -2,11 +2,10 @@ import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
 import {
-    getJSONFilesInFolderRecursively, isEmptyObj, isString, checkAndPrintErrors, filterLabels,
-    getLogger, getObjectAsString, convertArrToLabelQueryParams, TESTING_HOST
+    getJSONFilesInFolderRecursively, filterLabels, getLogger, getObjectAsString,
+    convertArrToLabelQueryParams, TESTING_HOST
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
-import { runFunctionalOnLocalhost } from 'loadmill-runner';
 const pLimit = require('p-limit');
 
 export = Loadmill;
@@ -31,12 +30,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
         for (let file of listOfFiles) {
             let res = await execFunc(file, ...funcArgs);
-            let testResult;
-            if (!isString(res) && !res.id) { // obj but without id -> local test
-                testResult = { url: Loadmill.TYPES.LOCAL, passed: res.passed } as Loadmill.TestResult;
-            } else { // obj with id -> functional test. id as string -> load test
-                testResult = await _wait(res);
-            }
+            const testResult = await _wait(res);
             results.push(testResult);
             if (!testResult.passed) break;
         }
@@ -93,11 +87,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 }
             }
             catch (err) {
-                if (testDef.type === Loadmill.TYPES.FUNCTIONAL && err.status === 404) {
-                    // 404 for functional could be fine when async - keep going:
-                    return;
-                }
-
                 clearInterval(intervalId);
 
                 if (callback) {
@@ -114,37 +103,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             resolve = _resolve;
             reject = _reject;
         });
-    }
-
-    async function _runFunctionalLocally(
-        config: Loadmill.Configuration,
-        paramsOrCallback: Loadmill.ParamsOrCallback,
-        callback?: Loadmill.Callback,
-        testArgs?: Loadmill.Args) {
-        return wrap(
-            async () => {
-                const logger = getLogger(testArgs);
-                logger.warn(`Deprecation warning: Functional tests are deprecated. Please use test-suites instead.`);
-                const description = (config.meta && config.meta.description) || 'no-test-description';
-
-                config = toConfig(config, paramsOrCallback);
-
-                config['async'] = false;
-
-                const trialRes = await runFunctionalOnLocalhost(config);
-
-                if (!isEmptyObj(trialRes.failures)) {
-                    checkAndPrintErrors(trialRes, testArgs, logger, description);
-                }
-
-                return {
-                    type: Loadmill.TYPES.FUNCTIONAL,
-                    passed: isFunctionalPassed(trialRes),
-                    description: description
-                };
-            },
-            callback || paramsOrCallback
-        );
     }
 
     async function _runTestSuite(
@@ -323,38 +281,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _wait(testDefOrId, callback);
         },
 
-        runFunctional(): void {
-            console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
-        },
-
-        runFunctionalFolder(): void {
-            console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
-        },
-
-        async runFunctionalLocally(config: Loadmill.Configuration,
-            paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback,
-            testArgs?: Loadmill.Args): Promise<Loadmill.TestResult> {
-            return _runFunctionalLocally(config, paramsOrCallback, callback, testArgs);
-        },
-
-        async runFunctionalFolderLocally(
-            folderPath: string,
-            paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestResult>> {
-
-            const listOfFiles = getJSONFilesInFolderRecursively(folderPath);
-            if (listOfFiles.length === 0) {
-                console.log(`No Loadmill test files were found at ${folderPath} - exiting...`);
-            }
-
-            return _runFolderSync(listOfFiles, _runFunctionalLocally, paramsOrCallback, callback);
-        },
-
-        runAsyncFunctional(): void {
-            console.error('Deprecation error: Functional tests are deprecated. Please use test-suites instead.');
-        },
-
         async runTestSuite(
             suite: Loadmill.TestSuiteDef,
             paramsOrCallback?: Loadmill.ParamsOrCallback,
@@ -393,14 +319,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     };
 }
 
-function isFunctionalPassed(trialResult) {
-    return !!trialResult && Object.keys(trialResult.failures || {}).length === 0;
-}
-
 const isTestPassed = (body, type) => {
     switch (type) {
-        case Loadmill.TYPES.FUNCTIONAL:
-            return isFunctionalPassed(body.trialResult);
         case Loadmill.TYPES.SUITE:
         case Loadmill.TYPES.TEST_PLAN:
             return body.status === "PASSED";
@@ -411,7 +331,7 @@ const isTestPassed = (body, type) => {
 function isTestInFinalState(body) {
     const { trialResult, result, status } = body;
     return (
-        (result || trialResult === false) || // load or functional tests
+        (result || trialResult === false) || // load tests
         (status && status !== "RUNNING") // test suites or test plan
     );
 }
@@ -419,8 +339,6 @@ function isTestInFinalState(body) {
 function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
     const prefix = `${server}/api`;
     switch (type) {
-        case Loadmill.TYPES.FUNCTIONAL:
-            return `${prefix}/tests/trials/${id}`
         case Loadmill.TYPES.SUITE:
             return `${prefix}/test-suites-runs/${id}`
         case Loadmill.TYPES.TEST_PLAN:
@@ -433,8 +351,6 @@ function getTestAPIUrl({ id, type }: Loadmill.TestDef, server: string) {
 function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
     const prefix = `${server}/app`;
     switch (type) {
-        case Loadmill.TYPES.FUNCTIONAL:
-            return `${prefix}/functional/${id}`
         case Loadmill.TYPES.SUITE:
             return `${prefix}/api-tests/test-suite-runs/${id}`
         case Loadmill.TYPES.TEST_PLAN:
@@ -575,9 +491,7 @@ namespace Loadmill {
 
     export enum TYPES {
         LOAD = 'load',
-        FUNCTIONAL = 'functional',
         SUITE = 'test-suite',
-        LOCAL = 'local',
         TEST_PLAN = 'test-plan'
     };
 }
