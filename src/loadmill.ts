@@ -32,7 +32,6 @@ program
     .option("-m, --mochawesome-report", "Create Test Suite (mochawesome style) report when the suite has ended.")
     .option("--mochawesome-report-path <mochawesomeReportPath>", "Save JSON mochawesome styled report to a path (defaults to current location).")
     .option("--colors", "Print test results in color")
-    .option("-c, --local", "Execute functional test synchronously on local machine. This flag trumps load-test option")
     .parse(process.argv);
 
 start()
@@ -57,7 +56,6 @@ async function start() {
         mochawesomeReportPath,
         launchAllTestSuites,
         parallel,
-        local,
         loadTest,
         testPlan,
         additionalDescription,
@@ -79,7 +77,7 @@ async function start() {
 
     const parameters = toParams(rawParams);
 
-    const testSuite = !loadTest && !local && !testPlan;
+    const testSuite = !loadTest && !testPlan;
     if (verbose) {
         // verbose trumps quiet:
         quiet = false;
@@ -98,7 +96,6 @@ async function start() {
             mochawesomeReportPath,
             launchAllTestSuites,
             parallel,
-            local,
             input,
             loadTest,
             testPlan,
@@ -317,15 +314,11 @@ async function start() {
         }
 
         for (let file of listOfFiles) {
-            let res, id;
+            let res;
 
-            if (local) {
-                logger.verbose(`Running ${file} as functional test locally`);
-                res = await loadmill.runFunctionalLocally(file, parameters, undefined, { verbose, colors });
-            } else {
-                logger.verbose(`Launching ${file} as load test`);
-                id = await loadmill.run(file, parameters);
-            }
+            logger.verbose(`Launching ${file} as load test`);
+            const id = await loadmill.run(file, parameters);
+
             if (wait && loadTest) {
                 logger.verbose("Waiting for test:", res ? res.id : id);
                 res = await loadmill.wait(res || id);

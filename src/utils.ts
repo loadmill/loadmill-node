@@ -2,37 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import isEmpty = require('lodash/isEmpty');
 import isAString = require('lodash/isString');
-import findLast = require('lodash/findLast');
-import * as Loadmill from "./index";
-import { resolveExpression } from 'loadmill-runner';
 import * as util from 'util';
-
-const getAssertionErrors = (testResults) => {
-    const resolvedRequests = testResults.resolvedRequests;
-    const testFailures: Loadmill.TestFailures = testResults.failures;
-
-    const failuresPerRequest = {};
-
-    for (let key in testFailures) {
-        if (testFailures.hasOwnProperty(key)) {
-
-            failuresPerRequest[key] = [];
-
-            let failedReq = resolvedRequests[key];
-            let reqAssertions = failedReq.assert;
-
-            const failures = testFailures[key];
-            for (let histoKey in failures.histogram) {
-                if (failures.histogram.hasOwnProperty(histoKey)) {
-                    let fail = reqAssertions[histoKey];
-                    if (fail) { failuresPerRequest[key].push(fail); }
-                }
-            }
-
-        }
-    }
-    return failuresPerRequest;
-};
 
 export const getObjectAsString = (obj, colors) => {
     // trim response body to length of 255
@@ -84,73 +54,6 @@ export const filterLabels = (labels: Array<number | string>) => {
     }
     return labels.filter(l => (typeof l === 'string' || typeof l === 'number') && l !== '');
 }
-
-const printRequest = (trialRes, assertionErrorsPerRequest, testArgs, logger) => {
-    if (testArgs && testArgs.verbose) {
-        logger.error('Test failure response -');
-        logger.log(getObjectAsString(trialRes, testArgs.colors));
-    } else {
-        logger.error('Test failed request -');
-        for (let requestIndex in assertionErrorsPerRequest) {
-            logger.log(getObjectAsString(trialRes.resolvedRequests[requestIndex], testArgs && testArgs.colors));
-        }
-    }
-}
-
-const evaluteParameterExpresion = (expr, postParams) => resolveExpression(expr, postParams);
-
-export const checkAndPrintErrors = (trialRes, testArgs, logger, description) => {
-    let assertionErrorsPerRequest = getAssertionErrors(trialRes);
-
-    if (!isEmptyObj(assertionErrorsPerRequest)) {
-        logger.error('Test failed - ' + description);
-
-        for (let requestIndex in assertionErrorsPerRequest) {
-            let request = trialRes.resolvedRequests[requestIndex];
-            let description = request.description || requestIndex;
-
-            if (assertionErrorsPerRequest[requestIndex].length == 0) {
-                // If there was a failure but no assertion failed this means the request itself failed
-                logger.log(`Failed request "${description}" - ${request.method} ${request.url}`);
-                if (request.response) {
-                    logger.log(`Status: ${request.response.status} ${request.response.statusText}`);
-                }
-
-                let histogram = trialRes.failures[requestIndex].histogram;
-                for (let errorKey in histogram) {
-                    logger.log(`Error: ${errorKey}`);
-                }
-
-            } else {
-                logger.error(`Assertion errors in request "${description}" - ${request.method} ${request.url}`);
-            }
-
-            for (let error of assertionErrorsPerRequest[requestIndex]) {
-                const parameterName = error.check;
-
-                const actualParameter = findLast(request.postParameters, parameterName); // can stay undefined in case the param is undefined
-                const actualParameterValue = actualParameter ? actualParameter[parameterName] : undefined;
-
-                // to do, eval the assertion expression to the actual string
-                let assertionMismatch = "be not empty or true"
-                if (error.equals) {
-                    assertionMismatch = `be "${evaluteParameterExpresion(error.equals, request.postParameters)}"`
-                } else if (error.contains) {
-                    assertionMismatch = `contain "${evaluteParameterExpresion(error.contains, request.postParameters)}"`
-                } else if (error.matches) {
-                    assertionMismatch = `match "${evaluteParameterExpresion(error.matches, request.postParameters)}"`
-                }
-
-                logger.log(`❌  Paramter "${parameterName}" value is "${actualParameterValue}", expected to`, assertionMismatch);
-            }
-        }
-
-    }
-
-    logger.log('\n');
-    printRequest(trialRes, assertionErrorsPerRequest, testArgs, logger);
-    logger.log('\n');
-};
 
 export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: string[] = []): string[] => {
 
