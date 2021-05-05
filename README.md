@@ -90,9 +90,39 @@ loadmill.runTestSuite({id: "test-suite-uuid"})
     .then(loadmill.mochawesomeReport);
 
 // promise with async/await
-const id = await loadmill.runTestSuite({id: "test-suite-uuid"});
+const id = await loadmill.runTestSuite(
+    {
+        id: "test-suite-uuid", // required
+        options: { //optional
+            additionalDescription: "description to add", // added at the end of the test suite description.
+            labels: ["label1", "label2"], // run flows that are assigned to specific label/s
+            pool: "some-pool-name" // Execute tests from a dedicated agent's pool (when using private agent)
+        }
+    },
+    { "parameterKey": "overrided value" } //optional
+);
 const result = await loadmill.wait(id);
 loadmill.mochawesomeReport(result); // may add a second arg of path to save the report to.
+```
+### Test Plans
+
+You can launch an existing test plan by supplying the test plan id:
+
+```js
+const testPlan = await loadmill.runTestPlan(
+    {
+        id: "test-plan-uuid" // required
+        options: { //optional
+            additionalDescription: "description to add", // added at the end of of each test suite
+            labels: ["label1", "label2"], // run suites that have flows assigned to specific label/s
+            pool: "some-pool-name", // Execute tests from a dedicated agent's pool (when using private agent)
+            parallel: 2 , // Set the concurrency amount of a running test suites in a test plan. Max concurrency is 10 
+        }
+    },
+    { "parameterKey": "overrided value" } //optional
+);
+
+const result = await loadmill.wait(testPlan);       
 ```
 
 ### Load tests
@@ -128,67 +158,6 @@ loadmill.run("./load-tests/long_test.json")
 // promise with async/await
 const loadTestId = await loadmill.run({ requests: [{ url: "www.myapp.com" }] });
 const result = await loadmill.wait(loadTestId);
-```
-
-### Promises vs Callbacks
-
-Every function that accepts a callback will return a promise instead if no callback is provided (and vice versa):
-```js
-loadmill.run("./load-tests/simple.json")
-    .then(id => console.log("Load test started: ", id))
-    .catch(err => console.error("Something bad: ", err));
-```
-
-### Running multiple tests
-
-**Deprecation warning** - `runAllExecutableTestSuites` option is deprecated. Please use Test Plans instead.
-
-You can use one API call to launch all of your team's test suites which have flows marked for execution (CI toggle switched to on). This option will execute all of your team's suites one by one **synchronously** (using the `wait` option by default). 
-```js
-/**
- * @returns [{id: string, type: 'test-suite', passed: boolean, url: string}]
- */
-const result = await loadmill.runAllExecutableTestSuites(
-    {
-        additionalDescription: "description to add", //optional - added at the end of the test suite description.
-        labels: ["label1", "label2"], //optional - run flows that are assigned to specific label/s
-        parallel: true, //optional - if true will run all suites in parallel
-        pool: "some-pool-name" // Execute tests from a dedicated agent's pool (when using private agent)
-    },
-    { "parameterKey": "overrided value" }, //optional
-    { verbose: true } // optional
-)
-```
-
-### Running test plan
-
-You can launch an existing test plan by supplying the test plan id:
-
-```js
-const testPlan = await loadmill.runTestPlan(
-    {
-        id: "test-plan-uuid"
-        options: { //optional
-            additionalDescription: "description to add", // added at the end of of each test suite
-            labels: ["label1", "label2"], // run suites that have flows assigned to specific label/s
-            pool: "some-pool-name" // Execute tests from a dedicated agent's pool (when using private agent)
-        }
-    },
-    { "parameterKey": "overrided value" } //optional
-);
-
-const result = await loadmill.wait(testPlan);       
-```
-
-In case you wish to run all the Loadmill tests in a given folder you can use the `runFolder` API.
-It will execute all the tests **synchronously** (using the `wait` option by default) unless a test has failed.
-This API returns an array of the tests result:
- ```js
- /**
- * @returns [{id: string, type: 'load', passed: boolean, url: string}]
- */
-loadmill.runFolder("/path/to/tests/folder")
-        .then(results => console.log(results));
 ```
 
 ### Parameters
@@ -270,9 +239,8 @@ Full list of command line options:
 - `-l, --load-test` Launch a load test. 
 - `--test-plan` Launch a test plan. 
 - `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
-- `-a, --launch-all-test-suites` (deprecated) Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end (executing one by one). 
-- `-p, --parallel` (deprecated) Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as `-a` but in parallel. Max concurrency is 10.
-- `--additional-description <description>` Add an additional description at the end of the current suite's description - available only for test suites.
+- `-p, --parallel` Set the concurrency of a running test suites in a test plan. Max concurrency is 10.
+- `--additional-description <description>` Add an additional description at the end of the current suite's / test-plan's description.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
 - `--pool <pool>` Execute tests from a dedicated agent's pool (when using private agent). 
 - `-w, --wait` Wait for the test to finish. 

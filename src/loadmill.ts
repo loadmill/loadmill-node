@@ -1,8 +1,8 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
 import {
-    getJSONFilesInFolderRecursively, getLogger, isUUID, isEmptyObj, isString,
-    getObjectAsString, convertStrToArr, printFlowRunsReport, printTestSuitesRunsReport
+    getJSONFilesInFolderRecursively, getLogger, isUUID, getObjectAsString, 
+    convertStrToArr, printFlowRunsReport, printTestSuitesRunsReport
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
@@ -17,8 +17,7 @@ program
     .option("-l, --load-test", "Launch a load test.")
     .option("--test-plan", "Launch a test plan.")
     .option("-s, --test-suite", "Launch a test suite (default option). If set then a test suite id must be provided instead of config file.")
-    .option("-a, --launch-all-test-suites", "Launch all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end")
-    .option("-p, --parallel", "Launch in parallel all team's test suites containing at least one flow marked for execution with CI toggle and wait for execution to end. Same as -a but in parallel")
+    .option("-p, --parallel <parallel>", "Set the concurrency of a running test suites in a test plan")
     .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
     .option("--labels <labels>", "Run flows that are assigned to a specific label (when running a test suite).. Multiple labels can be provided by seperated them with ',' (e.g. 'label1,label2').")
     .option("--pool <pool>", "Execute tests from a dedicated agent's pool (when using private agent)")
@@ -54,7 +53,6 @@ async function start() {
         junitReportPath,
         mochawesomeReport,
         mochawesomeReportPath,
-        launchAllTestSuites,
         parallel,
         loadTest,
         testPlan,
@@ -68,11 +66,6 @@ async function start() {
 
     if (!token) {
         validationFailed("No API token provided.");
-    }
-
-    if ((launchAllTestSuites || parallel) && isString(input) && !isUUID(input)) {
-        rawParams.push(input);
-        input = '';
     }
 
     const parameters = toParams(rawParams);
@@ -94,7 +87,6 @@ async function start() {
             junitReportPath,
             mochawesomeReport,
             mochawesomeReportPath,
-            launchAllTestSuites,
             parallel,
             input,
             loadTest,
@@ -109,124 +101,77 @@ async function start() {
 
     const loadmill = Loadmill({ token });
 
+    const testFailed = (msg: string) => {
+        logger.log("");
+        logger.error(`❌ ${msg}.`);
+
+        if (bail) {
+            process.exit(1);
+        }
+    }
+
+    let res: Loadmill.TestResult | undefined;
+
     if (testSuite) {
-        let results: Array<Loadmill.TestResult> = [];
         const suiteLabels = convertStrToArr(labels)
 
-        const failedSuites: Array<string> = [];
-        const testFailed = (msg: string) => {
-            logger.log("");
-            logger.error(`❌ ${msg}.`);
-
-            failedSuites.push(msg);
+        if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
+            validationFailed("Test suite run flag is on but no valid test suite id was provided.");
         }
 
-        if (launchAllTestSuites || parallel) {
-            try {
-                logger.warn(`Deprecation warning: --launch-all-test-suites (also -a) option is deprecated. Please use Test Plans for multiple suites execution.`);
+        try {
+            logger.verbose(`Executing suite with id ${input}`);
 
-                results = await loadmill.runAllExecutableTestSuites(
-                    {
-                        additionalDescription,
-                        labels: suiteLabels,
-                        parallel,
-                        pool,
-                    },
-                    parameters,
-                    { verbose, colors }
-                );
-            } catch (e) {
-                if (verbose) {
-                    logger.error(e);
-                }
-                const extInfo = e.response && e.response.res && e.response.res.text;
-                testFailed(`Couldn't run all of the team test suites. ${extInfo ? extInfo : ''}`);
-            }
+            let running = await loadmill.runTestSuite(
+                {
+                    id: input,
+                    options: {
+                        additionalDescription, labels: suiteLabels, pool
+                    }
+                },
+                parameters);
 
-        } else {
-            if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
-                validationFailed("Test suite run flag is on but no valid test suite id was provided.");
-            }
-            try {
-                logger.verbose(`Executing suite with id ${input}`);
+            if (running && running.id) {
 
-                let running = await loadmill.runTestSuite(
-                    {
-                        id: input,
-                        options: {
-                            additionalDescription, labels: suiteLabels, pool
-                        }
-                    },
-                    parameters);
+                if (wait) {
+                    logger.verbose("Waiting for test suite run with id", running.id);
+                    res = await loadmill.wait(running);
 
-                if (running && running.id) {
-
-                    if (wait) {
-                        logger.verbose("Waiting for test suite run with id", running.id);
-                        results.push(await loadmill.wait(running));
+                    if (report && res.flowRuns) {
+                        printFlowRunsReport(res.description, res.flowRuns, logger, colors);
                     }
 
-                } else {
-                    testFailed(`Couldn't run test suite with id ${input}`);
+                    if (res && junitReport) {
+                        await createJunitReport(res, token, junitReportPath);
+                    }
+
+                    if (res && mochawesomeReport) {
+                        await createMochawesomeReport(res, token, mochawesomeReportPath);
+                    }
+
+                    if (res && res.passed != null && !res.passed) {
+                        testFailed(`Test suite ${res.id || input} has failed`);
+                    }
                 }
-            } catch (e) {
-                if (verbose) {
-                    logger.error(e);
+
+                if (!quiet) {
+                    logger.log(res ? getObjectAsString(res, colors) : running.id);
                 }
-                const extInfo = e.response && e.response.res && e.response.res.text;
-                testFailed(`Couldn't run test suite with id ${input}. ${extInfo ? extInfo : ''}`);
+
+            } else {
+                testFailed(`Couldn't run test suite with id ${input}`);
             }
-        }
-
-        results.forEach(async res => {
-            const testSuiteRunId = res.id;
-            const flowRuns = res.flowRuns;
-
-            if (!quiet) {
-                logger.log(res ? getObjectAsString(res, colors) : testSuiteRunId);
+        } catch (e) {
+            if (verbose) {
+                logger.error(e);
             }
-
-            if (report && flowRuns) {
-                printFlowRunsReport(res.description, flowRuns, logger, colors);
-            }
-
-            if (res && res.passed != null && !res.passed) {
-                testFailed(`Test suite with id ${testSuiteRunId || input} has failed`);
-            }
-
-        });
-
-        if (!isEmptyObj(results)) {
-            if (junitReport) {
-                await createJunitReport(results, token, junitReportPath);
-            }
-
-            if (mochawesomeReport) {
-                await createMochawesomeReport(results, token, mochawesomeReportPath);
-            }
-        }
-
-        if (!isEmptyObj(failedSuites)) {
-            logger.log("");
-            logger.error('Test execution errors:');
-            failedSuites.forEach(s => logger.error(s));
-            if (bail) {
-                process.exit(1);
-            }
+            const extInfo = e.response && e.response.res && e.response.res.text;
+            testFailed(`Couldn't run test suite with id ${input}. ${extInfo ? extInfo : ''}`);
         }
 
     }
     else if (testPlan) {
-        let res: Loadmill.TestResult;
         const planLabels = convertStrToArr(labels)
-
-        const failedSuites: Array<string> = [];
-        const testFailed = (msg: string) => {
-            logger.log("");
-            logger.error(`❌ ${msg}.`);
-
-            failedSuites.push(msg);
-        }
 
         if (!isUUID(input)) { //if test plan flag is on then the input should be uuid
             validationFailed("Test plan run flag is on but no valid test plan id was provided.");
@@ -240,6 +185,7 @@ async function start() {
                         additionalDescription,
                         labels: planLabels,
                         pool,
+                        parallel
                     }
                 },
                 parameters);
@@ -249,39 +195,27 @@ async function start() {
                 if (wait) {
                     logger.verbose("Waiting for test plan run with id", running.id);
                     res = await loadmill.wait(running);
-                                       
-                    const testPlanRunId = res.id;
-                    const testSuitesRuns = res.testSuitesRuns;
-                    
+
                     if (!quiet) {
-                        logger.log(res ? getObjectAsString(res, colors) : testPlanRunId);
+                        logger.log(res ? getObjectAsString(res, colors) : running.id);
                     }
 
-                    if (report && testSuitesRuns) {
-                        printTestSuitesRunsReport(res.description, testSuitesRuns, logger, colors);
-                    }
-
-                    if (res && res.passed != null && !res.passed) {
-                        testFailed(`Test plan with id ${testPlanRunId || input} has failed`);
+                    if (report && res.testSuitesRuns) {
+                        printTestSuitesRunsReport(res.description, res.testSuitesRuns, logger, colors);
                     }
 
                     if (res) {
                         if (junitReport) {
                             await createJunitReport(res, token, junitReportPath);
                         }
-            
+
                         if (mochawesomeReport) {
                             await createMochawesomeReport(res, token, mochawesomeReportPath);
                         }
                     }
-            
-                    if (!isEmptyObj(failedSuites)) {
-                        logger.log("");
-                        logger.error('Test execution errors:');
-                        failedSuites.forEach(s => logger.error(s));
-                        if (bail) {
-                            process.exit(1);
-                        }
+
+                    if (res && res.passed != null && !res.passed) {
+                        testFailed(`Test plan with id ${res.id || input} has failed`);
                     }
 
                 }
@@ -297,8 +231,6 @@ async function start() {
             testFailed(`Couldn't run test plan with id ${input}. ${extInfo ? extInfo : ''}`);
         }
 
-    
-        
     }
 
     else { // if test suite flag is off then the input should be fileOrFolder
@@ -342,6 +274,7 @@ async function start() {
 function validationFailed(...args) {
     console.log('');
     console.error(...args);
+    console.log('');
     program.outputHelp();
     process.exit(3);
 }

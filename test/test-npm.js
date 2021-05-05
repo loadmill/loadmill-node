@@ -57,15 +57,6 @@ describe('Validate test-suite', () => {
             assert.strictEqual(isPassed, true);
         }
     }).timeout(timeout);
-
-    it('validate runAllExecutableTestSuites', async () => {
-        let results;
-        results = await loadmill.runAllExecutableTestSuites({
-            additionalDescription,
-            labels: ["lone star"]
-        });
-        assert.deepStrictEqual(results, []);
-    }).timeout(timeout);
 });
 
 describe('Validate test-plan', () => {

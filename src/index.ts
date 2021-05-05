@@ -1,12 +1,8 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import {
-    getJSONFilesInFolderRecursively, filterLabels, getLogger, getObjectAsString,
-    convertArrToLabelQueryParams, TESTING_HOST
-} from './utils';
+import { getJSONFilesInFolderRecursively, filterLabels, TESTING_HOST } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
-const pLimit = require('p-limit');
 
 export = Loadmill;
 
@@ -149,6 +145,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const labels = testPlan.options && testPlan.options.labels && filterLabels(testPlan.options.labels);
         const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
         const pool = testPlan.options && testPlan.options.pool;
+        const parallel = testPlan.options && testPlan.options.parallel;
 
         const {
             body: {
@@ -156,7 +153,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 err
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ overrideParameters, additionalDescription, labels, pool })
+            .send({ overrideParameters, additionalDescription, labels, pool, parallel })
             .auth(token, '');
 
         if (err || !testPlanRunId) {
@@ -164,73 +161,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return;
         }
         return { id: testPlanRunId, type: Loadmill.TYPES.TEST_PLAN };
-    }
-
-    async function _getExecutableTestSuites(labels?: Array<string> | null): Promise<Array<Loadmill.TestSuiteDef>> {
-        let url = `${testSuitesAPI}?rowsPerPage=100&filter=CI%20enabled`;
-        if (labels) {
-            const filteredLabels = filterLabels(labels);
-            if (filteredLabels) {
-                const labelsAsQueryParams = convertArrToLabelQueryParams(filteredLabels);
-                url = url.concat(labelsAsQueryParams);
-            }
-        }
-
-        let { body: { testSuites } } = await superagent.get(url)
-            .auth(token, '');
-
-        if (testSuites.length >= 100) {
-            // this is for protection
-            throw new Error(`Not allowed to execute more than 100 suites at once. Found ${testSuites.length} suites.`);
-        }
-
-        return testSuites.map(ts => ({
-            id: ts.id,
-            description: ts.description
-        } as Loadmill.TestSuiteDef));
-    }
-
-    async function _runAllExecutableTestSuites(
-        options?: Loadmill.TestSuiteOptions,
-        params?: Loadmill.Params,
-        testArgs?: Loadmill.Args): Promise<Array<Loadmill.TestResult>> {
-
-        const suites: Array<Loadmill.TestSuiteDef> = await _getExecutableTestSuites(options && options.labels);
-        const logger = getLogger(testArgs);
-
-        if (!suites || suites.length === 0) {
-            logger.log(`No test suites marked for execution were found. Are you sure flows are marked with CI toggle? - exiting...`);
-        } else {
-            logger.verbose(`Found ${suites.length} test suites marked for execution.`);
-        }
-
-        const results: Array<Loadmill.TestResult> = [];
-
-        if (options && options.parallel) {
-            logger.verbose(`Executing all suites in parallel`);
-            const limit = pLimit(10); // max concurrency we allow
-            const suitesPromises = suites.map(suite => limit(() => {
-                logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
-                return _runTestSuite({ ...suite, options }, params)
-                    .then(_wait)
-                    .then((res) => { results.push(res); });
-            }));
-            await Promise.all<void>(suitesPromises);
-        } else {
-
-            for (let suite of suites) {
-                logger.verbose(`Executing suite ${suite.description} with id ${suite.id}`);
-                suite.options = options;
-                await _runTestSuite(suite, params)
-                    .then(_wait)
-                    .then(res => {
-                        logger.verbose(`Suite result - ${getObjectAsString(res, testArgs && testArgs.colors)}`);
-                        results.push(res);
-                    });
-            }
-        }
-
-        return results;
     }
 
     async function _junitReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
@@ -295,17 +225,6 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         ): Promise<Loadmill.TestDef | undefined> {
 
             return _runTestPlan(testPlan, params);
-        },
-
-        async getExecutableTestSuites(labels?: Array<string> | null): Promise<Array<Loadmill.TestSuiteDef>> {
-            return _getExecutableTestSuites(labels);
-        },
-
-        async runAllExecutableTestSuites(
-            options?: Loadmill.TestSuiteOptions,
-            params?: Loadmill.Params,
-            testArgs?: Loadmill.Args) {
-            return _runAllExecutableTestSuites(options, params, testArgs);
         },
 
         async junitReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
@@ -455,7 +374,6 @@ namespace Loadmill {
         additionalDescription?: string;
         labels?: string[] | null;
         failGracefully?: boolean;
-        parallel?: boolean;
         pool?: string;
     }
     export interface TestPlanOptions {
@@ -463,6 +381,7 @@ namespace Loadmill {
         labels?: string[] | null;
         fetchFlowRuns?: boolean;
         pool?: string;
+        parallel?: number | string;
     }
     export interface TestResult extends TestDef {
         url: string;
