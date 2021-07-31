@@ -134,4 +134,4 @@ const CLI_COLORS = {
     DEFAULT: '\x1b[0m'
 }
 
-export const TESTING_HOST = process.env.LOADMILL_SERVER_HOST || "www.loadmill.com";
+export const TESTING_HOST = process.env.LOADMILL_SERVER_HOST || "app.loadmill.com";
