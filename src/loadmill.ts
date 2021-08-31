@@ -31,6 +31,7 @@ program
     .option("-m, --mochawesome-report", "Create Test Suite (mochawesome style) report when the suite has ended.")
     .option("--mochawesome-report-path <mochawesomeReportPath>", "Save JSON mochawesome styled report to a path (defaults to current location).")
     .option("--colors", "Print test results in color")
+    .option("-b, --branch <branch>", "Run the suites in the test plan from the branch in github.")
     .parse(process.argv);
 
 start()
@@ -59,6 +60,7 @@ async function start() {
         additionalDescription,
         labels,
         pool,
+        branch,
         args: [input, ...rawParams]
     } = program;
 
@@ -185,7 +187,8 @@ async function start() {
                         additionalDescription,
                         labels: planLabels,
                         pool,
-                        parallel
+                        parallel, 
+                        branch
                     }
                 },
                 parameters);
