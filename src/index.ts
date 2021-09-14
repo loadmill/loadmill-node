@@ -146,14 +146,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
         const pool = testPlan.options && testPlan.options.pool;
         const parallel = testPlan.options && testPlan.options.parallel;
-
+        const branch = testPlan.options && testPlan.options.branch;
         const {
             body: {
                 testPlanRunId,
                 err
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ overrideParameters, additionalDescription, labels, pool, parallel })
+            .send({ overrideParameters, additionalDescription, labels, pool, parallel, branch })
             .auth(token, '');
 
         if (err || !testPlanRunId) {
@@ -382,6 +382,7 @@ namespace Loadmill {
         fetchFlowRuns?: boolean;
         pool?: string;
         parallel?: number | string;
+        branch?: string;
     }
     export interface TestResult extends TestDef {
         url: string;
