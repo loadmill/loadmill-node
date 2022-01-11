@@ -126,7 +126,7 @@ const toFailedFlowRunReport = (flowRun, formater) => {
     const { resolvedRequests, failures } = flowRun.result as any;
     if (Array.isArray(resolvedRequests) && resolvedRequests.length > 0) {
         resolvedRequests.map((req, i) => {
-            const { description, method, url, assert } = req;
+            const { description, method, url, assert = [] } = req;
             const postParameters = flowRun.redactableResult && flowRun.redactableResult[i].postParameters;
 
             const reqFailures = failures && failures[i];

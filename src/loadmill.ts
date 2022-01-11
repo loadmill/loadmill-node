@@ -232,7 +232,7 @@ async function start() {
                 logger.error(e);
             }
             const extInfo = e.response && e.response.res && e.response.res.text;
-            testFailed(`Couldn't run test plan with id ${input}. ${extInfo ? extInfo : ''}`);
+            testFailed(`Couldn't run test plan with id ${input} ${extInfo ? extInfo : ''}`);
         }
 
     }
