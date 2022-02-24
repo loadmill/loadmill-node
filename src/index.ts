@@ -147,13 +147,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const pool = testPlan.options && testPlan.options.pool;
         const parallel = testPlan.options && testPlan.options.parallel;
         const branch = testPlan.options && testPlan.options.branch;
+        const maxFlakyFlowRetries = testPlan.options && testPlan.options.maxFlakyFlowRetries;
         const {
             body: {
                 testPlanRunId,
                 err
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ overrideParameters, additionalDescription, labels, pool, parallel, branch })
+            .send({ overrideParameters, additionalDescription, labels, pool, parallel, branch, maxFlakyFlowRetries })
             .auth(token, '');
 
         if (err || !testPlanRunId) {
@@ -383,6 +384,7 @@ namespace Loadmill {
         pool?: string;
         parallel?: number | string;
         branch?: string;
+        maxFlakyFlowRetries?: number | string;
     }
     export interface TestResult extends TestDef {
         url: string;
