@@ -32,6 +32,7 @@ program
     .option("--mochawesome-report-path <mochawesomeReportPath>", "Save JSON mochawesome styled report to a path (defaults to current location).")
     .option("--colors", "Print test results in color")
     .option("-b, --branch <branch>", "Run the test plan's suites from a GitHub branch. The latest version of the selected Git branch will be used as the test configuration for the chosen Test Plan")
+    .option("--retry-failed-flows <number of retries>", "Configure the test plan to re-run failed flows in case your tested system is unstable. Tests that pass after a retry will be considered successful.")
     .parse(process.argv);
 
 start()
@@ -61,6 +62,7 @@ async function start() {
         labels,
         pool,
         branch,
+        retryFailedFlows,
         args: [input, ...rawParams]
     } = program;
 
@@ -98,6 +100,7 @@ async function start() {
             labels,
             pool,
             branch,
+            retryFailedFlows,
             parameters,
         });
     }
@@ -189,7 +192,8 @@ async function start() {
                         labels: planLabels,
                         pool,
                         parallel, 
-                        branch
+                        branch,
+                        maxFlakyFlowRetries: retryFailedFlows,
                     }
                 },
                 parameters);
