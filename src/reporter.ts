@@ -365,7 +365,7 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
             "tests": suitesLength,
             "passes": passedSuites,
             "failures": failedSuites,
-            "start": (suites[0]? new Date(suites[0].startTime) : new Date()).toISOString(),
+            "start": (suites[0]? getFirstExecutedSuiteTime(suites) : new Date()).toISOString(),
             "end": new Date().toISOString(),
             "pending": 0,
             "testsRegistered": suitesLength,
@@ -421,3 +421,11 @@ export const mochawesomeReport = async (testResult: Loadmill.TestResult | Array<
     ensureDirectoryExistence(resolvedPath);
     fs.writeFileSync(resolvedPath, JSON.stringify(jsonResults, null, 2));
 }
+
+function getFirstExecutedSuiteTime(suites: Loadmill.TestResult[]) {
+    const firstSuite = suites.reduce(function(prev, curr) {
+        return prev.startTime < curr.startTime ? prev : curr;
+    });
+    return new Date(firstSuite.startTime);
+}
+
