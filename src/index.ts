@@ -1,7 +1,13 @@
 import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
-import { getJSONFilesInFolderRecursively, filterLabels, TESTING_HOST } from './utils';
+import {
+    getJSONFilesInFolderRecursively,
+    filterLabels,
+    TESTING_HOST,
+    toLoadmillParams,
+    readRawParams
+} from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
 export = Loadmill;
@@ -106,7 +112,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         paramsOrCallback: Loadmill.ParamsOrCallback,
         callback?: Loadmill.Callback) {
 
-        const overrideParameters = paramsOrCallback && typeof paramsOrCallback !== 'function' ? paramsOrCallback : {};
+        const params = paramsOrCallback && typeof paramsOrCallback !== 'function' ? paramsOrCallback : {};
+        const overrideParameters = toParams(params, suite.options?.parametersFile);
 
         const suiteId = suite.id;
         const additionalDescription = suite.options && suite.options.additionalDescription;
@@ -141,7 +148,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         params: Loadmill.Params,
     ) {
         const testPlanId = testPlan.id;
-        const overrideParameters = params || {};
+        const overrideParameters = toParams(params, testPlan.options?.parametersFile);
         const labels = testPlan.options && testPlan.options.labels && filterLabels(testPlan.options.labels);
         const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
         const pool = testPlan.options && testPlan.options.pool;
@@ -353,6 +360,14 @@ function toConfig(config: any | string, paramsOrCallback?: Loadmill.ParamsOrCall
     return config;
 }
 
+function toParams(params: Loadmill.Params = {}, filePath?: string) {
+    if (filePath) {
+        const fileParams = toLoadmillParams(readRawParams(filePath), (err) => { throw new Error(err) });
+        return { ...fileParams, ...params };
+    }
+    return params;
+}
+
 namespace Loadmill {
     export interface LoadmillOptions {
         token: string;
@@ -376,6 +391,7 @@ namespace Loadmill {
         labels?: string[] | null;
         failGracefully?: boolean;
         pool?: string;
+        parametersFile?: string;
     }
     export interface TestPlanOptions {
         additionalDescription?: string;
@@ -385,6 +401,7 @@ namespace Loadmill {
         parallel?: number | string;
         branch?: string;
         maxFlakyFlowRetries?: number | string;
+        parametersFile?: string;
     }
     export interface TestResult extends TestDef {
         url: string;

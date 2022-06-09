@@ -78,6 +78,29 @@ export const isString = (obj) => isAString(obj);
 export const isUUID = s =>
     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
 
+export const toLoadmillParams = (
+    rawParams: string[],
+    onValidationFail: (err: string) => void
+) => {
+    const parameters = {};
+
+    rawParams.forEach(pair => {
+        const pivot = pair.indexOf('=');
+
+        if (pivot <= 0) {
+            onValidationFail(`Invalid parameter assignment: ${pair}`);
+        }
+
+        const name = pair.slice(0, pivot);
+        parameters[name] = pair.slice(pivot + 1, pair.length);
+    });
+
+    return parameters;
+}
+
+export const readRawParams = (filePath: string): string[] => 
+    fs.readFileSync(filePath, 'utf-8').split(/\r?\n/);
+
 export class Logger {
     private readonly verb: boolean = false;
     private readonly colors: boolean = false;
