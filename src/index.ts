@@ -362,7 +362,7 @@ function toConfig(config: any | string, paramsOrCallback?: Loadmill.ParamsOrCall
 
 function toParams(params: Loadmill.Params = {}, filePath?: string) {
     if (filePath) {
-        const fileParams = toLoadmillParams(readRawParams(filePath), (err) => { throw new Error(err) });
+        const fileParams = toLoadmillParams(readRawParams(filePath));
         return { ...fileParams, ...params };
     }
     return params;

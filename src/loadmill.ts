@@ -297,6 +297,11 @@ function validationFailed(...args) {
 }
 
 function toParams(rawParams: string[], filePath?: string): Loadmill.Params {
-    const paramsArray = filePath ? [...readRawParams(filePath), ...rawParams] : rawParams;
-    return toLoadmillParams(paramsArray, validationFailed);
+    try {
+        const paramsArray = filePath ? [...readRawParams(filePath), ...rawParams] : rawParams;
+        return toLoadmillParams(paramsArray);
+    } catch (err) {
+        validationFailed(err.message);
+        return {};
+    }
 }
