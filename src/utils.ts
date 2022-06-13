@@ -78,6 +78,35 @@ export const isString = (obj) => isAString(obj);
 export const isUUID = s =>
     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
 
+export const toLoadmillParams = (rawParams: string[]) => {
+    const parameters = {};
+
+    rawParams.forEach(pair => {
+        if (!pair) {
+            return; 
+        }
+        
+        const pivot = pair.indexOf('=');
+
+        if (pivot <= 0) {
+            throw new Error(`Invalid parameter assignment: ${pair}`);
+        }
+
+        const name = pair.slice(0, pivot);
+        parameters[name] = pair.slice(pivot + 1, pair.length);
+    });
+
+    return parameters;
+}
+
+export const readRawParams = (filePath: string): string[] => {
+    try {
+        return fs.readFileSync(filePath, 'utf-8').split(/\r?\n/);
+    } catch (err) {
+        throw new Error(`Couldn't find file '${filePath}'. Please check file path and permissions.`);
+    }
+};
+
 export class Logger {
     private readonly verb: boolean = false;
     private readonly colors: boolean = false;

@@ -1,8 +1,15 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
 import {
-    getJSONFilesInFolderRecursively, getLogger, isUUID, getObjectAsString, 
-    convertStrToArr, printFlowRunsReport, printTestSuitesRunsReport
+    getJSONFilesInFolderRecursively,
+    getLogger,
+    isUUID,
+    getObjectAsString, 
+    convertStrToArr,
+    printFlowRunsReport,
+    printTestSuitesRunsReport,
+    toLoadmillParams,
+    readRawParams,
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
@@ -10,7 +17,7 @@ program
     .usage("<testSuiteId | load-config-file-or-folder> -t <token> [options] [parameter=value...]")
     .description(
         "Run a test suite (default option), test plan or a load test on loadmill.com.\n  " +
-        "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80'.\n\n  " +
+        "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80' or supply a file using --parameters-file.\n\n  " +
         "Learn more at https://www.npmjs.com/package/loadmill#cli"
     )
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
@@ -32,7 +39,8 @@ program
     .option("--mochawesome-report-path <mochawesomeReportPath>", "Save JSON mochawesome styled report to a path (defaults to current location).")
     .option("--colors", "Print test results in color")
     .option("-b, --branch <branch>", "Run the test plan's suites from a GitHub branch. The latest version of the selected Git branch will be used as the test configuration for the chosen Test Plan")
-    .option("--retry-failed-flows <number of retries>", "Configure the test plan to re-run failed flows in case your tested system is unstable. Tests that pass after a retry will be considered successful.")
+    .option("--retry-failed-flows <numberOfRetries>", "Configure the test plan to re-run failed flows in case your tested system is unstable. Tests that pass after a retry will be considered successful.")
+    .option("--parameters-file <parametersFile>", "Supply a file with parameters to override. File format should be 'name=value' divided by new line.")
     .parse(process.argv);
 
 start()
@@ -63,6 +71,7 @@ async function start() {
         pool,
         branch,
         retryFailedFlows,
+        parametersFile,
         args: [input, ...rawParams]
     } = program;
 
@@ -72,7 +81,7 @@ async function start() {
         validationFailed("No API token provided.");
     }
 
-    const parameters = toParams(rawParams);
+    const parameters = toParams(rawParams, parametersFile);
 
     const testSuite = !loadTest && !testPlan;
     if (verbose) {
@@ -287,19 +296,12 @@ function validationFailed(...args) {
     process.exit(3);
 }
 
-function toParams(rawParams: string[]): Loadmill.Params {
-    const parameters: Loadmill.Params = {};
-
-    rawParams.forEach(pair => {
-        const pivot = pair.indexOf('=');
-
-        if (pivot <= 0) {
-            validationFailed("Invalid parameter assignment:", pair);
-        }
-
-        const name = pair.slice(0, pivot);
-        parameters[name] = pair.slice(pivot + 1, pair.length);
-    });
-
-    return parameters;
+function toParams(rawParams: string[], filePath?: string): Loadmill.Params {
+    try {
+        const paramsArray = filePath ? [...readRawParams(filePath), ...rawParams] : rawParams;
+        return toLoadmillParams(paramsArray);
+    } catch (err) {
+        validationFailed(err.message);
+        return {};
+    }
 }
