@@ -1,6 +1,6 @@
 {
   "name": "loadmill",
-  "version": "3.0.6",
+  "version": "3.0.8",
   "description": "A node.js module for running load tests and functional tests on loadmill.com",
   "keywords": [
     "loadmill",
@@ -45,7 +45,7 @@
     "@types/node": "^9.4.7",
     "dotenv": "^8.2.0",
     "husky": "^4.2.1",
-    "mocha": "^7.0.0",
+    "mocha": "^9.2.2",
     "typescript": "^4.3.2"
   }
 }
