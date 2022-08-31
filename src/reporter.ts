@@ -16,19 +16,20 @@ import { TESTING_HOST } from './utils';
 const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
 
     const flowResult = async (f: Loadmill.FlowRun) => {
+        const url = getFlowRunAPI(f);
+        const { body: flowRunDetails } = await superagent.get(url).auth(token, '');
         const flowRun: any = {
             'testcase': [{
                 _attr: {
                     name: f.description,
-                    status: f.status
+                    status: f.status,
+                    time: (+flowRunDetails.endTime - +flowRunDetails.startTime)/1000,
                 }
             }]
         };
 
         if (f.status === "FAILED") {
-            const url = getFlowRunAPI(f);
-            const { body } = await superagent.get(url).auth(token, '');
-            flowRun.testcase.push(...toFailedJUnitFlowRunReport(body));
+            flowRun.testcase.push(...toFailedJUnitFlowRunReport(flowRunDetails));
         }
         return flowRun;
     }
