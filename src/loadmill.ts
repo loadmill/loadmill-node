@@ -27,6 +27,7 @@ program
     .option("-p, --parallel <parallel>", "Set the concurrency of a running test suites in a test plan")
     .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
     .option("--labels <labels>", "Run flows that are assigned to a specific label (when running a test suite).. Multiple labels can be provided by seperated them with ',' (e.g. 'label1,label2').")
+    .option("--labels-expression <labelsExpression>", "Run a test plan's suites with flows that match the labels expression. An expression may contain the characters ( ) & | ! (e.g. '(label1 | label2) & !label3')")
     .option("--pool <pool>", "Execute tests from a dedicated agent's pool (when using private agent)")
     .option("-w, --wait", "Wait for the test to finish.")
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
@@ -68,6 +69,7 @@ async function start() {
         testPlan,
         additionalDescription,
         labels,
+        labelsExpression,
         pool,
         branch,
         retryFailedFlows,
@@ -107,6 +109,7 @@ async function start() {
             testSuite,
             additionalDescription,
             labels,
+            labelsExpression,
             pool,
             branch,
             retryFailedFlows,
@@ -199,6 +202,7 @@ async function start() {
                     options: {
                         additionalDescription,
                         labels: planLabels,
+                        labelsExpression,
                         pool,
                         parallel, 
                         branch,
