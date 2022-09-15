@@ -150,6 +150,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const testPlanId = testPlan.id;
         const overrideParameters = toParams(params, testPlan.options?.parametersFile);
         const labels = testPlan.options && testPlan.options.labels && filterLabels(testPlan.options.labels);
+        const labelsExpression = testPlan.options && testPlan.options.labelsExpression;
         const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
         const pool = testPlan.options && testPlan.options.pool;
         const parallel = testPlan.options && testPlan.options.parallel;
@@ -161,7 +162,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 err
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ overrideParameters, additionalDescription, labels, pool, parallel, branch, maxFlakyFlowRetries })
+            .send({ overrideParameters, additionalDescription, labels, pool, parallel, branch, maxFlakyFlowRetries, labelsExpression })
             .auth(token, '');
 
         if (err || !testPlanRunId) {
@@ -396,6 +397,7 @@ namespace Loadmill {
     export interface TestPlanOptions {
         additionalDescription?: string;
         labels?: string[] | null;
+        labelsExpression?: string;
         fetchFlowRuns?: boolean;
         pool?: string;
         parallel?: number | string;

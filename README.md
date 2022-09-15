@@ -243,6 +243,7 @@ Full list of command line options:
 - `-p, --parallel` Set the concurrency of a running test suites in a test plan. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current suite's / test-plan's description.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
+- `--labels-expression <labelsExpression>`, Run a test plan's suites with flows that match the labels expression. An expression may contain the characters ( ) & | ! (e.g. '(label1 | label2) & !label3')
 - `--pool <pool>` Execute tests from a dedicated agent's pool (when using private agent). 
 - `-b --branch <branch>` Run the test plan's suites from a GitHub branch. The latest version of the selected Git branch will be used as the test configuration for the chosen Test Plan. 
 - `--retry-failed-flows <numberOfRetries>` Configure the test plan to re-run failed flows in case your tested system is unstable. Tests that pass after a retry will be considered successful. 
