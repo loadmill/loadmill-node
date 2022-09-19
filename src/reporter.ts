@@ -121,7 +121,7 @@ const toFailedJUnitFlowRunReport = (flowRun) => {
     ));
 };
 
-// TODO this all flow sshould come from @loadmill package
+// TODO this all flow should come from @loadmill package
 const toFailedFlowRunReport = (flowRun, formater) => {
     const errs: Array<any> = []
     const { resolvedRequests, failures } = flowRun.result as any;
@@ -305,6 +305,7 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
     const { body: flowData } = await superagent.get(url).auth(token, '');
 
     const hasPassed = flow.status === 'PASSED';
+    const hasFailed = flow.status === 'FAILED';
     const res =
     {
         "title": flow.description,
@@ -313,12 +314,12 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
         "duration": flowData.endTime - flowData.startTime,
         "state": hasPassed ? 'passed' : 'failed',
         "pass": hasPassed,
-        "fail": !hasPassed,
+        "fail": hasFailed,
         "isHook": false,
         "skipped": false,
         "pending": false,
         "code": getFlowRunWebURL(suite, flow),
-        "err": hasPassed ? {} : toMochawesomeFailedFlow(flowData),
+        "err": hasFailed ? toMochawesomeFailedFlow(flowData) : {},
         "uuid": flow.id
     }
     return res;
@@ -334,8 +335,11 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
 
     return {
         "title": suite.description,
-        "tests": await Promise.all(flows.map(f => limit(() => flowToMochawesone(suite, f, token)))),
-        "duration": (+suite.endTime - +suite.startTime),
+        "tests": await Promise.all(
+            flows.filter(flow => ['PASSED', 'FAILED'].includes(flow.status))
+            .map(f => limit(() => flowToMochawesone(suite, f, token)))
+        ),
+        "duration": ((+suite.endTime || Date.now()) - +suite.startTime),
         "suites": [],
         "uuid": suite.id,
         "passes": passedFlows,
@@ -355,7 +359,7 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
     const suites = !Array.isArray(testResult) ? (testResult.testSuitesRuns || [testResult]) : testResult;
     const passedSuites = suites.filter(t => t.passed).length;
     const failedSuites = suites.filter(t => !t.passed).length;
-    const duration = suites.reduce((acc, s) => acc + (+s.endTime - +s.startTime), 0);
+    const duration = suites.reduce((acc, s) => acc + ((+s.endTime || Date.now()) - +s.startTime), 0);
 
     const suitesLength = suites.length;
     const limit = pLimit(3);

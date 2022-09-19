@@ -70,7 +70,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         description: body && body.description,
                         passed: isTestPassed(body, testDef.type),
                         startTime: body.startTime,
-                        endTime: body.endTime
+                        endTime: body.endTime,
+                        status: body.status
                     };
 
                     if (testDef.type === Loadmill.TYPES.SUITE) {
