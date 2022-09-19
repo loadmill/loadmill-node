@@ -128,6 +128,15 @@ async function start() {
         }
     }
 
+    const testStopped = (msg: string) => {
+        logger.log("");
+        logger.error(`⏹ ${msg}.`);
+
+        if (bail) {
+            process.exit(1);
+        }
+    }
+
     let res: Loadmill.TestResult | undefined;
 
     if (testSuite) {
@@ -235,6 +244,9 @@ async function start() {
                         }
                     }
 
+                    if (res && res.status === 'STOPPED') {
+                        testStopped(`Test plan with id ${res.id || input} has stopped`);
+                    }
                     if (res && res.passed != null && !res.passed) {
                         testFailed(`Test plan with id ${res.id || input} has failed`);
                     }
