@@ -56,7 +56,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 let { body } = await superagent.get(apiUrl)
                     .auth(token, '');
 
-                if (isTestInFinalState(body)) {
+                if (isTestInFinalState(body, testDef.type)) {
                     clearInterval(intervalId);
 
                     if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
@@ -257,7 +257,12 @@ const isTestPassed = (body, type) => {
             return body.result === 'done';
     }
 }
-function isTestInFinalState(body) {
+function isTestInFinalState(body, runType) {
+    if (runType === Loadmill.TYPES.TEST_PLAN) {
+        if (body.testSuitesRuns.some(suite => suite.status === "RUNNING")) {
+            return false;
+        }
+    }
     const { trialResult, result, status } = body;
     return (
         (result || trialResult === false) || // load tests
