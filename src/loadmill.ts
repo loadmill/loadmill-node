@@ -130,7 +130,7 @@ async function start() {
 
     const testStopped = (msg: string) => {
         logger.log("");
-        logger.error(`⏹ ${msg}.`);
+        logger.error(`✋ ${msg}.`);
 
         if (bail) {
             process.exit(1);
