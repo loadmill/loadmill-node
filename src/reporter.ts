@@ -23,7 +23,7 @@ const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<L
                 _attr: {
                     name: f.description,
                     status: f.status,
-                    time: (+flowRunDetails.endTime - +flowRunDetails.startTime)/1000,
+                    time: ((+flowRunDetails.endTime - +flowRunDetails.startTime) || 0)/1000,
                 }
             }]
         };
@@ -124,7 +124,7 @@ const toFailedJUnitFlowRunReport = (flowRun) => {
 // TODO this all flow should come from @loadmill package
 const toFailedFlowRunReport = (flowRun, formater) => {
     const errs: Array<any> = []
-    const { resolvedRequests, failures } = flowRun.result as any;
+    const { resolvedRequests, failures, err } = flowRun.result as any;
     if (Array.isArray(resolvedRequests) && resolvedRequests.length > 0) {
         resolvedRequests.map((req, i) => {
             const { description, method, url, assert = [] } = req;
@@ -175,6 +175,9 @@ const toFailedFlowRunReport = (flowRun, formater) => {
                 }
             }
         });
+    } 
+    else if (err) {
+        errs.push({ desc: typeof err === 'string' ? err : err.message })
     }
     return errs;
 };
@@ -295,7 +298,7 @@ const toMochawesomeFailedFlow = (flowRun) => {
         "negate": false,
         "_message": "",
         "generatedMessage": false,
-        "diff": errs[0].desc + errs.reduce((acc, e) => `${acc} \n ${e.ass ? `\n ${e.ass}` : ''}`, '')
+        "diff": errs[0]?.desc + errs.reduce((acc, e) => `${acc} \n ${e.ass ? `\n ${e.ass}` : ''}`, '')
     };
 };
 
@@ -311,7 +314,7 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
         "title": flow.description,
         "fullTitle": flow.description,
         "timedOut": false,
-        "duration": flowData.endTime - flowData.startTime,
+        "duration": (flowData.endTime - flowData.startTime) || 0,
         "state": hasPassed ? 'passed' : 'failed',
         "pass": hasPassed,
         "fail": hasFailed,
