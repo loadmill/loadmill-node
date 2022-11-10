@@ -267,8 +267,8 @@ const toMochawesomeFailedFlow = (flowRun) => {
     const errs = toFailedFlowRunReport(flowRun, (check, operation, value, actual) => {
         let text = '';
         if (actual != null) {
-            text += `\n+   \"Expected: ${check} ${operation} ${value != null ? value : ''} `;
-            text += `\n-   \"Actual: ${actual !== 'null' ? actual : 'null'} `;
+            text += `\n+   Expected: ${check} ${operation} ${value != null ? value : ''} `;
+            text += `\n-   Actual: ${actual !== 'null' ? actual : 'null'} `;
         }
         return text;
     });
