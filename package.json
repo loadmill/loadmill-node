@@ -1,6 +1,6 @@
 {
   "name": "loadmill",
-  "version": "3.2.3",
+  "version": "3.2.4",
   "description": "A node.js module for running load tests and functional tests on loadmill.com",
   "keywords": [
     "loadmill",
