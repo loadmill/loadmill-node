@@ -88,7 +88,7 @@ const resolvePath = (path: string, suffix) => {
 
 // TODO this all flow should come from @loadmill package
 const toFailedFlowRunReport = (flowRun, formater) => {
-    const errs: Array<any> = [];
+    const errs: Array<string> = [];
     const { result, redactableResult } = flowRun;
     if (result.flow) {
         const { flow, afterEach } = result;
@@ -105,7 +105,7 @@ const toFailedFlowRunReport = (flowRun, formater) => {
     return errs;
 };
 
-const appendFlowRunFailures = (errs, formater, result, redactableResult, offset = 0) => {
+const appendFlowRunFailures = (errs: string[], formater, result, redactableResult, offset: number = 0) => {
     const { resolvedRequests, failures, err } = result as any;
 
     if (Array.isArray(resolvedRequests) && resolvedRequests.length > 0) {
@@ -130,6 +130,8 @@ const appendFlowRunFailures = (errs, formater, result, redactableResult, offset 
                     flowFailedText += ` ${name} `;
                 });
 
+                errs.push(flowFailedText);
+
                 const flatPostParameters = flatMap(postParameters);
                 const assertionItems = getItems(
                     assertionNames,
@@ -149,18 +151,15 @@ const appendFlowRunFailures = (errs, formater, result, redactableResult, offset 
                                 actual,
                                 formater
                             );
-                            errs.push({ desc: flowFailedText, ass: assErr });
+                            errs.push(assErr);
                         }
                     }
                 });
-                if (isEmpty(errs)) {
-                    errs.push({ desc: flowFailedText });
-                }
             }
         });
     } 
     else if (err) {
-        errs.push({ desc: typeof err === 'string' ? err : err.message })
+        errs.push(typeof err === 'string' ? err : err.message)
     }
 };
 
@@ -280,7 +279,7 @@ const toMochawesomeFailedFlow = (flowRun) => {
         "negate": false,
         "_message": "",
         "generatedMessage": false,
-        "diff": errs[0]?.desc + errs.reduce((acc, e) => `${acc} \n ${e.ass ? `\n ${e.ass}` : ''}`, '')
+        "diff": errs.join('\n')
     };
 };
 
