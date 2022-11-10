@@ -88,12 +88,30 @@ const resolvePath = (path: string, suffix) => {
 
 // TODO this all flow should come from @loadmill package
 const toFailedFlowRunReport = (flowRun, formater) => {
-    const errs: Array<any> = []
-    const { resolvedRequests, failures, err } = flowRun.result as any;
+    const errs: Array<any> = [];
+    const { result, redactableResult } = flowRun;
+    if (result.flow) {
+        const { flow, afterEach } = result;
+        appendFlowRunFailures(errs, formater, flow, redactableResult.flow);
+        
+        if (afterEach) {
+            appendFlowRunFailures(errs, formater, afterEach, redactableResult.afterEach, flow.resolvedRequests.length);
+        }
+    } 
+    else {
+        appendFlowRunFailures(errs, formater, result, redactableResult);
+    }
+
+    return errs;
+};
+
+const appendFlowRunFailures = (errs, formater, result, redactableResult, offset = 0) => {
+    const { resolvedRequests, failures, err } = result as any;
+
     if (Array.isArray(resolvedRequests) && resolvedRequests.length > 0) {
         resolvedRequests.map((req, i) => {
             const { description, method, url, assert = [] } = req;
-            const postParameters = flowRun.redactableResult && flowRun.redactableResult[i].postParameters;
+            const postParameters = redactableResult && redactableResult[i].postParameters;
 
             const reqFailures = failures && failures[i];
             const numSuccesses = 1;
@@ -101,7 +119,7 @@ const toFailedFlowRunReport = (flowRun, formater) => {
             const totalNumRequests = numSuccesses + numFailures;
 
             if (numFailures > 0) {
-                let flowFailedText = `${genReqDesc(i)} ${description ? genReqDesc(i, description) : ''} ${method} ${url} =>`;
+                let flowFailedText = `${genReqDesc(i + offset)} ${description ? genReqDesc(i + offset, description) : ''} ${method} ${url} =>`;
 
                 const assertionNames = Object.keys(assert);
                 const requestErrorNames = Object.keys(histogram).filter(
@@ -144,7 +162,6 @@ const toFailedFlowRunReport = (flowRun, formater) => {
     else if (err) {
         errs.push({ desc: typeof err === 'string' ? err : err.message })
     }
-    return errs;
 };
 
 function generateAssertionName(
