@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as Loadmill from "./index";
-import * as xml from "xml";
 import * as superagent from 'superagent';
 const pLimit = require('p-limit');
 
@@ -11,76 +10,64 @@ import find = require('lodash/find');
 import forEach = require('lodash/forEach');
 import includes = require('lodash/includes');
 
-import { TESTING_HOST } from './utils';
+import { TESTING_HOST, sleep } from './utils';
 
-const generateJunitJsonReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
+const testingServer = "https://" + TESTING_HOST;
 
-    const flowResult = async (f: Loadmill.FlowRun) => {
-        const url = getFlowRunAPI(f);
-        const { body: flowRunDetails } = await superagent.get(url).auth(token, '');
-        const flowRun: any = {
-            'testcase': [{
-                _attr: {
-                    name: f.description,
-                    status: f.status,
-                    time: ((+flowRunDetails.endTime - +flowRunDetails.startTime) || 0)/1000,
-                }
-            }]
-        };
+const POLLING_INTERVAL_MS = 5000;
+const MAX_POLLING = 36; // 3 minutes
 
-        if (f.status === "FAILED") {
-            flowRun.testcase.push(...toFailedJUnitFlowRunReport(flowRunDetails));
-        }
-        return flowRun;
+const generateJunitReport = async (
+    testId: string,
+    runType: Loadmill.TYPES,
+    token: string
+): Promise<string | undefined> => {
+    try {
+        const { body: { junitReportId } } = await superagent.post(junitReportAPI)
+            .send({ testId, runType })
+            .auth(token, '');
+    
+        return junitReportId;
+    } catch (err) {
+        handleJunitFailed(err.message);
     }
+};
 
-    const suiteResult = async (suite: Loadmill.TestResult) => {
-        const { flowRuns = [] } = suite;
-        const failures = flowRuns.filter((f: any) => f.status !== 'PASSED').length;
-        const limit = pLimit(3);
+const waitForAndSaveJunitReport = async (reportId: string, token: string, path?: string) => {
+    let polling_count = 0;
 
-        return {
-            'testsuite': [{
-                _attr: {
-                    name: suite.description,
-                    errors: failures,
-                    failures,
-                    timestamp: (new Date()).toISOString().slice(0, -5),
-                    tests: flowRuns.length,
-                    url: suite.url
-                }
-            },
-            ...await Promise.all(flowRuns.map(f => limit(() => flowResult(f))))
-            ]
-        };
-    }
+    while (polling_count < MAX_POLLING) {
+        try {
+            const { body: { junitReport } } = await superagent.get(`${junitReportAPI}/${reportId}`)
+                .auth(token, '');
 
-    let suites;
-
-    if (!Array.isArray(testResult)) {
-        if (Array.isArray(testResult.testSuitesRuns)) { // testplan
-            suites = testResult.testSuitesRuns;
+            saveJunitReport(junitReport, path);
+            break;
         }
-        else {
-            suites = [testResult] // single run
-        }
-    } else {
-        suites = testResult; // multiple suites
-    }
-
-    const limit = pLimit(3);
-
-    let jsonResults = {
-        'testsuites': [{
-            _attr: {
-                name: 'Loadmill suites run',
+        catch (err) {
+            if (err.status !== 404) {
+                handleJunitFailed(err.message);
+                break;
             }
-        },
-        ...await Promise.all(suites.map(s => limit(() => suiteResult(s))))
-        ]
-    };
+        }
 
-    return jsonResults
+        polling_count ++;
+        await sleep(POLLING_INTERVAL_MS);
+    }
+
+    if (polling_count === MAX_POLLING) {
+        handleJunitFailed('Generating report took too long. Please contact support');
+    }
+};
+
+const saveJunitReport = (junitReport: string, path?: string) => {
+    const resolvedPath = resolvePath(path ? path : './test-results', 'xml');
+    ensureDirectoryExistence(resolvedPath);
+    fs.writeFileSync(resolvedPath, junitReport);
+};
+
+const handleJunitFailed = (errMsg?) => {
+    console.log(`Failed to generate JUnit report${errMsg ? `: ${errMsg}` : '' }`);
 };
 
 const ensureDirectoryExistence = (filePath) => {
@@ -99,36 +86,32 @@ const resolvePath = (path: string, suffix) => {
     return `${path}/loadmill/results.${suffix}`
 }
 
-const toFailedJUnitFlowRunReport = (flowRun) => {
-    const errs = toFailedFlowRunReport(flowRun, (check, operation, value, actual) => {
-        let text = '';
-        if (actual != null) {
-            text += `Expected: ${check} ${operation} ${value != null ? value : ''} `;
-            text += `Actual: ${actual !== 'null' ? actual : 'null'} `;
-        }
-        return text;
-    });
-
-    return errs.map(e => (
-        {
-            'failure': [{
-                _attr: {
-                    message: `${e.desc} ${e.ass ? e.ass : ''}`,
-                    type: 'ERROR'
-                }
-            }]
-        }
-    ));
-};
-
 // TODO this all flow should come from @loadmill package
 const toFailedFlowRunReport = (flowRun, formater) => {
-    const errs: Array<any> = []
-    const { resolvedRequests, failures, err } = flowRun.result as any;
+    const errs: Array<string> = [];
+    const { result, redactableResult } = flowRun;
+    if (result.flow) {
+        const { flow, afterEach } = result;
+        appendFlowRunFailures(errs, formater, flow, redactableResult.flow);
+        
+        if (afterEach) {
+            appendFlowRunFailures(errs, formater, afterEach, redactableResult.afterEach, flow.resolvedRequests.length);
+        }
+    } 
+    else {
+        appendFlowRunFailures(errs, formater, result, redactableResult);
+    }
+
+    return errs;
+};
+
+const appendFlowRunFailures = (errs: string[], formater, result, redactableResult, offset: number = 0) => {
+    const { resolvedRequests, failures, err } = result as any;
+
     if (Array.isArray(resolvedRequests) && resolvedRequests.length > 0) {
         resolvedRequests.map((req, i) => {
             const { description, method, url, assert = [] } = req;
-            const postParameters = flowRun.redactableResult && flowRun.redactableResult[i].postParameters;
+            const postParameters = redactableResult && redactableResult[i].postParameters;
 
             const reqFailures = failures && failures[i];
             const numSuccesses = 1;
@@ -136,7 +119,7 @@ const toFailedFlowRunReport = (flowRun, formater) => {
             const totalNumRequests = numSuccesses + numFailures;
 
             if (numFailures > 0) {
-                let flowFailedText = `${genReqDesc(i)} ${description ? genReqDesc(i, description) : ''} ${method} ${url} =>`;
+                let flowFailedText = `${genReqDesc(i + offset)} ${description ? genReqDesc(i + offset, description) : ''} ${method} ${url} =>`;
 
                 const assertionNames = Object.keys(assert);
                 const requestErrorNames = Object.keys(histogram).filter(
@@ -146,6 +129,8 @@ const toFailedFlowRunReport = (flowRun, formater) => {
                 requestErrorNames.map((name) => {
                     flowFailedText += ` ${name} `;
                 });
+
+                errs.push(flowFailedText);
 
                 const flatPostParameters = flatMap(postParameters);
                 const assertionItems = getItems(
@@ -166,20 +151,16 @@ const toFailedFlowRunReport = (flowRun, formater) => {
                                 actual,
                                 formater
                             );
-                            errs.push({ desc: flowFailedText, ass: assErr });
+                            errs.push(assErr);
                         }
                     }
                 });
-                if (isEmpty(errs)) {
-                    errs.push({ desc: flowFailedText });
-                }
             }
         });
     } 
     else if (err) {
-        errs.push({ desc: typeof err === 'string' ? err : err.message })
+        errs.push(typeof err === 'string' ? err : err.message)
     }
-    return errs;
 };
 
 function generateAssertionName(
@@ -272,22 +253,22 @@ function genReqDesc(index: number, description?: string) {
 }
 
 function getFlowRunAPI(f: Loadmill.FlowRun) {
-    const testingServer = "https://" + TESTING_HOST;
     return `${testingServer}/api/test-suites-runs/flows/${f.id}`;
 }
 
 function getFlowRunWebURL(s: Loadmill.TestResult, f: Loadmill.FlowRun) {
-    const testingServer = "https://" + TESTING_HOST;
     return `${testingServer}/app/api-tests/test-suite-runs/${s.id}/flows/${f.id}`;
 }
+
+const junitReportAPI = `${testingServer}/api/reports/junit`;
 
 const toMochawesomeFailedFlow = (flowRun) => {
 
     const errs = toFailedFlowRunReport(flowRun, (check, operation, value, actual) => {
         let text = '';
         if (actual != null) {
-            text += `\n+   \"Expected: ${check} ${operation} ${value != null ? value : ''} `;
-            text += `\n-   \"Actual: ${actual !== 'null' ? actual : 'null'} `;
+            text += `\n+   Expected: ${check} ${operation} ${value != null ? value : ''} `;
+            text += `\n-   Actual: ${actual !== 'null' ? actual : 'null'} `;
         }
         return text;
     });
@@ -298,7 +279,7 @@ const toMochawesomeFailedFlow = (flowRun) => {
         "negate": false,
         "_message": "",
         "generatedMessage": false,
-        "diff": errs[0]?.desc + errs.reduce((acc, e) => `${acc} \n ${e.ass ? `\n ${e.ass}` : ''}`, '')
+        "diff": errs.join('\n')
     };
 };
 
@@ -358,8 +339,8 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
     }
 };
 
-const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string) => {
-    const suites = !Array.isArray(testResult) ? (testResult.testSuitesRuns || [testResult]) : testResult;
+const generateMochawesomeReport = async (testResult: Loadmill.TestResult, token: string) => {
+    const suites = testResult.testSuitesRuns || [testResult];
     const passedSuites = suites.filter(t => t.passed).length;
     const failedSuites = suites.filter(t => !t.passed).length;
     const duration = suites.reduce((acc, s) => acc + ((+s.endTime || Date.now()) - +s.startTime), 0);
@@ -409,18 +390,17 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult | Array
     return res;
 };
 
-export const junitReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string, path?: string) => {
+export const junitReport = async (testResult: Loadmill.TestResult, token: string, path?: string) => {
     if (!testResult) {
         return;
     }
-    const jsonResults = await generateJunitJsonReport(testResult, token);
-    const asXml = xml(jsonResults, { indent: '  ', declaration: true });
-    const resolvedPath = resolvePath(path ? path : './test-results', 'xml');
-    ensureDirectoryExistence(resolvedPath);
-    fs.writeFileSync(resolvedPath, asXml);
+    console.log('Generating JUnit report...');
+    const reportId = await generateJunitReport(testResult.id, testResult.type, token);    
+    reportId && await waitForAndSaveJunitReport(reportId, token, path);
+    console.log('Finished generating JUnit report');
 }
 
-export const mochawesomeReport = async (testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, token: string, path?: string) => {
+export const mochawesomeReport = async (testResult: Loadmill.TestResult, token: string, path?: string) => {
     if (!testResult) {
         return;
     }
@@ -436,4 +416,3 @@ function getFirstExecutedSuiteTime(suites: Loadmill.TestResult[]) {
     });
     return new Date(firstSuite.startTime);
 }
-

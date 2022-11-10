@@ -173,11 +173,11 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return { id: testPlanRunId, type: Loadmill.TYPES.TEST_PLAN };
     }
 
-    async function _junitReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+    async function _junitReport(testResult: Loadmill.TestResult, path?: string) {
         return createJunitReport(testResult, token, path);
     }
 
-    async function _mochawesomeReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string) {
+    async function _mochawesomeReport(testResult: Loadmill.TestResult, path?: string) {
         return createMochawesomeReport(testResult, token, path);
     }
 
@@ -237,11 +237,11 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             return _runTestPlan(testPlan, params);
         },
 
-        async junitReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+        async junitReport(testResult: Loadmill.TestResult, path?: string): Promise<void> {
             return _junitReport(testResult, path);
         },
 
-        async mochawesomeReport(testResult: Loadmill.TestResult | Array<Loadmill.TestResult>, path?: string): Promise<void> {
+        async mochawesomeReport(testResult: Loadmill.TestResult, path?: string): Promise<void> {
             return _mochawesomeReport(testResult, path);
         },
 
@@ -381,7 +381,7 @@ namespace Loadmill {
     }
     export interface TestDef {
         id: string;
-        type: string;
+        type: TYPES;
     }
     export interface TestSuiteDef {
         id: string;

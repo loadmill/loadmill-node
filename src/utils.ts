@@ -107,6 +107,10 @@ export const readRawParams = (filePath: string): string[] => {
     }
 };
 
+export const sleep = async (ms: number) => {
+    await new Promise(r => setTimeout(r, ms));
+};
+
 export class Logger {
     private readonly verb: boolean = false;
     private readonly colors: boolean = false;
