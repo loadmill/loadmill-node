@@ -164,7 +164,7 @@ const appendFlowRunFailures = (errs: string[], formater, result, redactableResul
 };
 
 function generateAssertionName(
-    { check, equals, notEquals, contains, notContains, matches, falsy, greater, lesser, JSONSchema }: any,
+    { check, equals, notEquals, contains, notContains, matches, falsy, greater, lesser, JSONSchema, JSONContains }: any,
     actual: any,
     formatAssertion: Function
 ) {
@@ -186,6 +186,8 @@ function generateAssertionName(
         return formatAssertion(check, 'Doesn\'t exist', null, actual);
     } else if (JSONSchema != null) {
         return formatAssertion(check, 'JSON Schema', JSONSchema, actual);
+    } else if (JSONContains != null) {
+        return formatAssertion(check, 'JSON Contains', JSONContains, actual);
     } else {
         return formatAssertion(check, 'Exists', null, actual);
     }
