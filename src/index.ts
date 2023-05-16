@@ -2,13 +2,14 @@ import './polyfills'
 import * as fs from 'fs';
 import * as superagent from 'superagent';
 import {
-    getJSONFilesInFolderRecursively,
     filterLabels,
     TESTING_HOST,
     toLoadmillParams,
-    readRawParams
+    readRawParams,
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
+
+const TP_POLL_INTERVAL = 10 * 1000;
 
 export = Loadmill;
 
@@ -20,25 +21,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
 
     const testingServer = "https://" + _testingServerHost;
-    const testSuitesAPI = `${testingServer}/api/test-suites`;
     const testPlansAPI = `${testingServer}/api/test-plans`;
-
-    async function _runFolderSync(
-        listOfFiles: string[],
-        execFunc: (...args) => Promise<any>,
-        ...funcArgs) {
-
-        const results: Loadmill.TestResult[] = [];
-
-        for (let file of listOfFiles) {
-            let res = await execFunc(file, ...funcArgs);
-            const testResult = await _wait(res);
-            results.push(testResult);
-            if (!testResult.passed) break;
-        }
-
-        return results;
-    }
 
     async function _wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
         let resolve, reject;
@@ -51,7 +34,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const apiUrl = getTestAPIUrl(testDef, testingServer);
         const webUrl = getTestWebUrl(testDef, testingServer);
 
-        const intervalId = setInterval(async () => {
+        let retries = 1;
+        const busyWait = async (intervalId) => {
             try {
                 let { body } = await superagent.get(apiUrl)
                     .auth(token, '');
@@ -64,22 +48,9 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                         body = bodyWithFlows;
                     }
 
-                    const testResult: Loadmill.TestResult = {
-                        ...testDef,
-                        url: webUrl,
-                        description: body && body.description,
-                        passed: isTestPassed(body, testDef.type),
-                        startTime: body.startTime,
-                        endTime: body.endTime,
-                        status: body.status
-                    };
+                    const testResult: Loadmill.TestResult = toTestResult(testDef, webUrl, body);
 
-                    if (testDef.type === Loadmill.TYPES.SUITE) {
-                        testResult.flowRuns = reductFlowRunsData(body.testSuiteFlowRuns);
-                    }
-                    else if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
-                        testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns, testingServer)
-                    }
+                    redactData(testResult, body, testingServer);
 
                     if (callback) {
                         callback(null, testResult);
@@ -92,6 +63,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             catch (err) {
                 clearInterval(intervalId);
 
+                if (retries < 3) {
+                    const retyrIntervalId = setInterval(async () => { busyWait(retyrIntervalId); }, TP_POLL_INTERVAL);
+                    retries++;
+                    return;
+                }
+
                 if (callback) {
                     callback(err, null);
                 }
@@ -99,49 +76,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                     reject(err);
                 }
             }
-        },
-            10 * 1000);
+        }
+
+        const intervalId = setInterval(async () => { busyWait(intervalId); }, TP_POLL_INTERVAL);
 
         return callback ? null! as Promise<any> : new Promise((_resolve, _reject) => {
             resolve = _resolve;
             reject = _reject;
         });
-    }
-
-    async function _runTestSuite(
-        suite: Loadmill.TestSuiteDef,
-        paramsOrCallback: Loadmill.ParamsOrCallback,
-        callback?: Loadmill.Callback) {
-
-        const params = paramsOrCallback && typeof paramsOrCallback !== 'function' ? paramsOrCallback : {};
-        const overrideParameters = toParams(params, suite.options?.parametersFile);
-
-        const suiteId = suite.id;
-        const additionalDescription = suite.options && suite.options.additionalDescription;
-        const labels = suite.options && suite.options.labels && filterLabels(suite.options.labels);
-        const failGracefully = suite.options && suite.options.failGracefully;
-        const pool = suite.options && suite.options.pool;
-
-        return wrap(
-            async () => {
-                const {
-                    body: {
-                        testSuiteRunId,
-                        err
-                    }
-                } = await superagent.post(`${testSuitesAPI}/${suiteId}/run${failGracefully ? '?failGracefully=true' : ''}`)
-                    .send({ overrideParameters, additionalDescription, labels, pool })
-                    .auth(token, '');
-
-                if (err || !testSuiteRunId) {
-                    console.error(err ? JSON.stringify(err) : "The server encountered an error while handling the request");
-                    return;
-                }
-                return { id: testSuiteRunId, type: Loadmill.TYPES.SUITE };
-
-            },
-            callback || paramsOrCallback
-        );
     }
 
     async function _runTestPlan(
@@ -204,29 +146,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             );
         },
 
-        async runFolder(
-            folderPath: string,
-            paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback): Promise<Array<Loadmill.TestResult>> {
-
-            const listOfFiles = getJSONFilesInFolderRecursively(folderPath);
-            if (listOfFiles.length === 0) {
-                console.log(`No Loadmill test files were found at ${folderPath} - exiting...`);
-            }
-            return _runFolderSync(listOfFiles, this.run, paramsOrCallback, callback);
-
-        },
-
         wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
             return _wait(testDefOrId, callback);
-        },
-
-        async runTestSuite(
-            suite: Loadmill.TestSuiteDef,
-            paramsOrCallback?: Loadmill.ParamsOrCallback,
-            callback?: Loadmill.Callback): Promise<Loadmill.TestDef> {
-
-            return _runTestSuite(suite, paramsOrCallback, callback);
         },
 
         async runTestPlan(
@@ -257,6 +178,23 @@ const isTestPassed = (body, type) => {
             return body.result === 'done';
     }
 }
+
+function toTestResult(testDef: Loadmill.TestDef, webUrl: string, body: any): Loadmill.TestResult {
+    return {
+        ...testDef,
+        url: webUrl,
+        description: body && body.description,
+        passed: isTestPassed(body, testDef.type),
+        startTime: body.startTime,
+        endTime: body.endTime,
+        status: body.status
+    };
+}
+
+function redactData(testResult: Loadmill.TestResult, body: any, testingServer: string) {
+    testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns, testingServer);
+}
+
 function isTestInFinalState(body, runType) {
     if (runType === Loadmill.TYPES.TEST_PLAN) {
         if (body.testSuitesRuns.some(suite => suite.status === "RUNNING")) {
@@ -291,16 +229,6 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
             return `${prefix}/api-tests/test-plan-runs/${id}`
         default: //load
             return `${prefix}/test/${id}`
-    }
-}
-
-function reductFlowRunsData(flowRuns) {
-    if (flowRuns) {
-        return flowRuns.map(f => ({
-            id: f.id,
-            description: f.description,
-            status: f.status
-        }));
     }
 }
 

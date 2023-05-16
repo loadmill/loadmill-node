@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as path from "path";
 import isEmpty = require('lodash/isEmpty');
 import isAString = require('lodash/isString');
 import * as util from 'util';
@@ -54,24 +53,6 @@ export const filterLabels = (labels: Array<number | string>) => {
     }
     return labels.filter(l => (typeof l === 'string' || typeof l === 'number') && l !== '');
 }
-
-export const getJSONFilesInFolderRecursively = (fileOrFolder: string, filelist: string[] = []): string[] => {
-
-    let isFile = fs.statSync(fileOrFolder).isFile();
-
-    if (isFile && endsWith(fileOrFolder, '.json')) {
-        filelist.push(fileOrFolder);
-    } else if (!isFile) {
-        fs.readdirSync(fileOrFolder)
-            .map(file =>
-                getJSONFilesInFolderRecursively(path.join(fileOrFolder, file), filelist));
-    }
-
-    return filelist;
-};
-
-
-const endsWith = (str, suffix) => str.indexOf(suffix, str.length - suffix.length) !== -1;
 
 export const isEmptyObj = (obj) => isEmpty(obj);
 export const isString = (obj) => isAString(obj);

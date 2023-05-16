@@ -1,12 +1,10 @@
 import * as Loadmill from './index';
 import * as program from 'commander';
 import {
-    getJSONFilesInFolderRecursively,
     getLogger,
     isUUID,
     getObjectAsString, 
     convertStrToArr,
-    printFlowRunsReport,
     printTestSuitesRunsReport,
     toLoadmillParams,
     readRawParams,
@@ -14,16 +12,15 @@ import {
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
 program
-    .usage("<testSuiteId | load-config-file-or-folder> -t <token> [options] [parameter=value...]")
+    .usage("<testPlanId | load-config-file> -t <token> [options] [parameter=value...]")
     .description(
-        "Run a test suite (default option), test plan or a load test on loadmill.com.\n  " +
+        "Run a test plan (default option) or a load test on loadmill.com.\n  " +
         "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80' or supply a file using --parameters-file.\n\n  " +
         "Learn more at https://www.npmjs.com/package/loadmill#cli"
     )
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
     .option("-l, --load-test", "Launch a load test.")
-    .option("--test-plan", "Launch a test plan.")
-    .option("-s, --test-suite", "Launch a test suite (default option). If set then a test suite id must be provided instead of config file.")
+    .option("--test-plan", "Launch a test plan (default option).")
     .option("-p, --parallel <parallel>", "Set the concurrency of a running test suites in a test plan")
     .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
     .option("--labels <labels>", "Run flows that are assigned to a specific label (when running a test suite).. Multiple labels can be provided by seperated them with ',' (e.g. 'label1,label2').")
@@ -85,7 +82,6 @@ async function start() {
 
     const parameters = toParams(rawParams, parametersFile);
 
-    const testSuite = !loadTest && !testPlan;
     if (verbose) {
         // verbose trumps quiet:
         quiet = false;
@@ -106,7 +102,6 @@ async function start() {
             input,
             loadTest,
             testPlan,
-            testSuite,
             additionalDescription,
             labels,
             labelsExpression,
@@ -138,66 +133,7 @@ async function start() {
     }
 
     let res: Loadmill.TestResult | undefined;
-
-    if (testSuite) {
-        const suiteLabels = convertStrToArr(labels)
-
-        if (!isUUID(input)) { //if test suite flag is on then the input should be uuid
-            validationFailed("Test suite run flag is on but no valid test suite id was provided.");
-        }
-
-        try {
-            logger.verbose(`Executing suite with id ${input}`);
-
-            let running = await loadmill.runTestSuite(
-                {
-                    id: input,
-                    options: {
-                        additionalDescription, labels: suiteLabels, pool
-                    }
-                },
-                parameters);
-
-            if (running && running.id) {
-
-                if (wait) {
-                    logger.verbose("Waiting for test suite run with id", running.id);
-                    res = await loadmill.wait(running);
-
-                    if (report && res.flowRuns) {
-                        printFlowRunsReport(res.description, res.flowRuns, logger, colors);
-                    }
-
-                    if (res && junitReport) {
-                        await createJunitReport(res, token, junitReportPath);
-                    }
-
-                    if (res && mochawesomeReport) {
-                        await createMochawesomeReport(res, token, mochawesomeReportPath);
-                    }
-
-                    if (res && res.passed != null && !res.passed) {
-                        testFailed(`Test suite ${res.id || input} has failed`);
-                    }
-                }
-
-                if (!quiet) {
-                    logger.log(res ? getObjectAsString(res, colors) : running.id);
-                }
-
-            } else {
-                testFailed(`Couldn't run test suite with id ${input}`);
-            }
-        } catch (e) {
-            if (verbose) {
-                logger.error(e);
-            }
-            const extInfo = e.response && e.response.res && e.response.res.text;
-            testFailed(`Couldn't run test suite with id ${input}. ${extInfo ? extInfo : ''}`);
-        }
-
-    }
-    else if (testPlan) {
+    if (testPlan || !loadTest) {
         const planLabels = convertStrToArr(labels)
 
         if (!isUUID(input)) { //if test plan flag is on then the input should be uuid
@@ -266,39 +202,31 @@ async function start() {
 
     }
 
-    else { // if test suite flag is off then the input should be fileOrFolder
+    else { // if test plan flag is off then the input should be a conf file
 
-        const fileOrFolder = input;
-        if (!fileOrFolder) {
-            validationFailed("No configuration file or folder were provided.");
+        const configFile = input;
+        if (!configFile) {
+            validationFailed("No configuration file were provided.");
+        }
+        let res;
+
+        logger.verbose(`Launching ${configFile} as load test`);
+        const id = await loadmill.run(configFile, parameters);
+
+        if (wait && loadTest) {
+            logger.verbose("Waiting for test:", res ? res.id : id);
+            res = await loadmill.wait(res || id);
         }
 
-        const listOfFiles = getJSONFilesInFolderRecursively(fileOrFolder);
-        if (listOfFiles.length === 0) {
-            logger.log(`No Loadmill test files were found at ${fileOrFolder} - exiting...`);
+        if (!quiet) {
+            logger.log(JSON.stringify(res, null, 4) || id);
         }
 
-        for (let file of listOfFiles) {
-            let res;
+        if (res && res.passed != null && !res.passed) {
+            logger.error(`❌  Test ${configFile} failed.`);
 
-            logger.verbose(`Launching ${file} as load test`);
-            const id = await loadmill.run(file, parameters);
-
-            if (wait && loadTest) {
-                logger.verbose("Waiting for test:", res ? res.id : id);
-                res = await loadmill.wait(res || id);
-            }
-
-            if (!quiet) {
-                logger.log(JSON.stringify(res, null, 4) || id);
-            }
-
-            if (res && res.passed != null && !res.passed) {
-                logger.error(`❌  Test ${file} failed.`);
-
-                if (bail) {
-                    process.exit(1);
-                }
+            if (bail) {
+                process.exit(1);
             }
         }
     }
