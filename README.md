@@ -30,80 +30,6 @@ Using yarn:
 ### API Tokens
 In order to use the Loadmill REST API or our node module and CLI, you will need to generate an [API Token](https://docs.loadmill.com/integrations/api-tokens).
 
-### Test Suites
-
-You may launch an existing test suite by supplying the suite id - this is usually useful for testing your API for regressions after every new deployment.
-Test suites are launched and not awaiting the results.
-
-```js
-const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
-
-/**
- * @returns { id: 'uuid', type: 'test-suite' }
- */
-const result = await loadmill.runTestSuite({id: "test-suite-uuid"});
-```
-
-You can also extend the suite object with `options` object - containing:
-* additionalDescription - added at the end of the test suite description.
-* labels - will execute only flows attached to these labales.
-
-Also, you may add a second argument if you wish to override suite parameters
-```js
-const result = await loadmill.runTestSuite(
-    {
-        id: "test-suite-uuid",
-        options: { //optional
-            additionalDescription: "description to add", // will be added to the end of the test suite description.
-            labels: ["label1", "label2"], //run flows that are assigned to specific label/s
-            pool: "some-pool-name" // Execute tests from a dedicated agent's pool (when using private agent)
-        }
-    },
-    {
-        "parameterKey": "overrided value"
-    }
-);
-```
-
-You can run the test suite and create a junit-like report in the end:
- ```js
-/**
- * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
- */
-loadmill.runTestSuite({id: "test-suite-uuid"})
-    .then(loadmill.wait)
-    .then(loadmill.junitReport);
-
-// promise with async/await
-const id = await loadmill.runTestSuite({id: "test-suite-uuid"});
-const result = await loadmill.wait(id);
-loadmill.junitReport(result); // may add a second arg of path to save the report to.
-```
-
-You can run the test suite and create a mochawesome report in the end:
- ```js
-/**
- * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
- */
-loadmill.runTestSuite({id: "test-suite-uuid"})
-    .then(loadmill.wait)
-    .then(loadmill.mochawesomeReport);
-
-// promise with async/await
-const id = await loadmill.runTestSuite(
-    {
-        id: "test-suite-uuid", // required
-        options: { //optional
-            additionalDescription: "description to add", // added at the end of the test suite description.
-            labels: ["label1", "label2"], // run flows that are assigned to specific label/s
-            pool: "some-pool-name" // Execute tests from a dedicated agent's pool (when using private agent)
-        }
-    },
-    { "parameterKey": "overrided value" } //optional
-);
-const result = await loadmill.wait(id);
-loadmill.mochawesomeReport(result); // may add a second arg of path to save the report to.
-```
 ### Test Plans
 
 You can launch an existing test plan by supplying the test plan id:
@@ -149,7 +75,7 @@ Since load tests usually run for at least a few minutes, the loadmill client doe
 You can explicitly wait for a test to finish using the `wait` function:
  ```js
 /**
- * @returns {id: string, type: 'load' | 'test-suite', passed: boolean, url: string}
+ * @returns {id: string, type: 'load' | 'test-plan', passed: boolean, url: string}
  */
 loadmill.run("./load-tests/long_test.json")
     .then(loadmill.wait)
@@ -174,26 +100,7 @@ loadmill.run("./load-tests/parametrized_test.json", {host: "test.myapp.com", por
 
 The loadmill Command Line Interface basically wraps the functions provided by the node module:
 ```
-loadmill <load-config-file-or-folder | test-suite-id> -t <token> [options] [parameter=value...]
-```
-
-### Test suites
-
-You may launch a test suite by setting the `-s` or `--test-suite` option:
-```
-loadmill test-suite-id --test-suite -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
-```
-
-The test suite will be launched and its unique identifier will be printed to the standard output. You may alternatively
-set the `-w` or `--wait` option in order to wait for the test-suite to finish, in which case only the result JSON will be
-printed out at the end
-
-You can add an additional description at the end of the current suite's description with the `--additional-description <description>` option.
-
-You can tell loadmill to run flows that are assigned to a specific label with the `--labels <labels>` option. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
-
-```
-loadmill <test-suite-id> --test-suite -t <token> --labels "label1,label2"
+loadmill <test-plan-id || load-test-config-file> -t <token> [options] [parameter=value...]
 ```
 
 ### Test Plan
@@ -202,6 +109,17 @@ You may launch a test plan by setting the --test-plan option:
 
 ```
 loadmill  <test-plan-id> --test-plan -w -v -t <token> --report --colors --labels "label1,label2"
+```
+
+set the `-w` or `--wait` option in order to wait for the test-plan to finish, in which case only the result JSON will be
+printed out at the end
+
+You can add an additional description at the end of the current plan's description with the `--additional-description <description>` option.
+
+You can tell loadmill to run flows that are assigned to a specific label with the `--labels <labels>` option. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2').
+
+```
+loadmill <test-plan-id> --test-plan -t <token> --labels "label1,label2" --additional-description "build 1986"
 ```
 
 ### Load Tests
@@ -238,10 +156,9 @@ Full list of command line options:
 - `-h, --help` Output usage information.
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. 
-- `--test-plan` Launch a test plan. 
-- `-s, --test-suite` Launch a test suite. If set then a test suite id must be provided instead of config file.
+- `--test-plan` Launch a test plan (default). 
 - `-p, --parallel` Set the concurrency of a running test suites in a test plan. Max concurrency is 10.
-- `--additional-description <description>` Add an additional description at the end of the current suite's / test-plan's description.
+- `--additional-description <description>` Add an additional description at the end of the current test-plan's description.
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
 - `--labels-expression <labelsExpression>`, Run a test plan's suites with flows that match the labels expression. An expression may contain the characters ( ) & | ! (e.g. '(label1 | label2) & !label3')
 - `--pool <pool>` Execute tests from a dedicated agent's pool (when using private agent). 
