@@ -9,7 +9,7 @@ import {
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
-const TP_POLL_INTERVAL = 10 * 1000;
+const TEST_PLAN_POLL_INTERVAL_IN_MS = 10 * 1000 // 10 seconds
 
 export = Loadmill;
 
@@ -35,7 +35,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const webUrl = getTestWebUrl(testDef, testingServer);
 
         let retries = 1;
-        const busyWait = async (intervalId) => {
+        const intervalId = setInterval(async () => {
             try {
                 let { body } = await superagent.get(apiUrl)
                     .auth(token, '');
@@ -61,12 +61,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 }
             }
             catch (err) {
-                clearInterval(intervalId);
 
                 if (retries < 3) {
-                    const retyrIntervalId = setInterval(async () => { busyWait(retyrIntervalId); }, TP_POLL_INTERVAL);
                     retries++;
                     return;
+                } else {
+                    clearInterval(intervalId);
                 }
 
                 if (callback) {
@@ -76,9 +76,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                     reject(err);
                 }
             }
-        }
-
-        const intervalId = setInterval(async () => { busyWait(intervalId); }, TP_POLL_INTERVAL);
+        }, TEST_PLAN_POLL_INTERVAL_IN_MS);
 
         return callback ? null! as Promise<any> : new Promise((_resolve, _reject) => {
             resolve = _resolve;
