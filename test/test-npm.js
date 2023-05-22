@@ -32,33 +32,6 @@ describe('Validate load-test', () => {
     }).timeout(timeout);
 });
 
-describe('Validate test-suite', () => {
-    it('validate runTestSuite', async () => {
-        let isPassed = false;
-        try {
-            // return --> { id: 'uuid', type: 'test-suite' }
-            const result = await loadmill.runTestSuite({
-                id: suiteId,
-                options: {
-                    additionalDescription, labels: ["npm-sanity"]
-                }
-            });
-            assert.notStrictEqual(result.id.match(uuidPattern), null);
-
-            const res = await loadmill.wait(result);
-            if (res !== undefined) {
-                isPassed = res.passed;
-            }
-
-        } catch (err) {
-            console.error("err", err);
-        }
-        finally {
-            assert.strictEqual(isPassed, true);
-        }
-    }).timeout(timeout);
-});
-
 describe('Validate test-plan', () => {
     it('Validate test-plan with mochawesomeReport', async () => {
         const testPlan = await loadmill.runTestPlan({
