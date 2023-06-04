@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as superagent from 'superagent';
 import {
     filterLabels,
+    filterTags,
     TESTING_HOST,
     toLoadmillParams,
     readRawParams,
@@ -94,6 +95,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const labelsExpression = testPlan.options && testPlan.options.labelsExpression;
         const additionalDescription = testPlan.options && testPlan.options.additionalDescription;
         const pool = testPlan.options && testPlan.options.pool;
+        const tags = testPlan.options && testPlan.options.tags && filterTags(testPlan.options.tags);
         const parallel = testPlan.options && testPlan.options.parallel;
         const branch = testPlan.options && testPlan.options.branch;
         const maxFlakyFlowRetries = testPlan.options && testPlan.options.maxFlakyFlowRetries;
@@ -103,7 +105,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 err
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ overrideParameters, additionalDescription, labels, pool, parallel, branch, maxFlakyFlowRetries, labelsExpression })
+            .send({ overrideParameters, additionalDescription, labels, pool, parallel, tags, branch, maxFlakyFlowRetries, labelsExpression })
             .auth(token, '');
 
         if (err || !testPlanRunId) {
@@ -332,6 +334,7 @@ namespace Loadmill {
         labelsExpression?: string;
         fetchFlowRuns?: boolean;
         pool?: string;
+        tags?: string[] | null;
         parallel?: number | string;
         branch?: string;
         maxFlakyFlowRetries?: number | string;

@@ -54,6 +54,16 @@ export const filterLabels = (labels: Array<number | string>) => {
     return labels.filter(l => (typeof l === 'string' || typeof l === 'number') && l !== '');
 }
 
+export const filterTags = (tags: Array<string>) => {
+    if (!Array.isArray(tags)) {
+        throw new Error(`Tags need be in array format i.e. ['tag1', 'another tag']. Got ${tags}`);
+    }
+    if (tags.every(l => l == '')) {
+        return null;
+    }
+    return tags.filter(l => (typeof l === 'string') && l !== '');
+}
+
 export const isEmptyObj = (obj) => isEmpty(obj);
 export const isString = (obj) => isAString(obj);
 export const isUUID = s =>

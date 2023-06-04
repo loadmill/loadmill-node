@@ -42,7 +42,8 @@ const testPlan = await loadmill.runTestPlan(
             additionalDescription: "description to add", // added at the end of of each test suite
             labels: ["label1", "label2"], // run suites that have flows assigned to specific label/s
             pool: "some-pool-name", // Execute tests from a dedicated agent's pool (when using private agent)
-            parallel: 2 , // Set the concurrency amount of a running test suites in a test plan. Max concurrency is 10 
+            parallel: 2 , // Set the concurrency amount of a running test suites in a test plan. Max concurrency is 10
+            tags: ["tag1", "another tags"], // Set of strings attached to the plan run and later can be query by
         }
     },
     { "parameterKey": "overrided value" } //optional
@@ -162,6 +163,7 @@ Full list of command line options:
 - `--labels <labels>`, Run flows that are assigned to a specific label. Multiple labels can be provided by seperated them with "," (e.g. 'label1,label2'). 
 - `--labels-expression <labelsExpression>`, Run a test plan's suites with flows that match the labels expression. An expression may contain the characters ( ) & | ! (e.g. '(label1 | label2) & !label3')
 - `--pool <pool>` Execute tests from a dedicated agent's pool (when using private agent). 
+- `--tags <tags>` Tag a test plan run with a comma separated list of tags (e.g. 'tag1,tag2'). 
 - `-b --branch <branch>` Run the test plan's suites from a GitHub branch. The latest version of the selected Git branch will be used as the test configuration for the chosen Test Plan. 
 - `--retry-failed-flows <numberOfRetries>` Configure the test plan to re-run failed flows in case your tested system is unstable. Tests that pass after a retry will be considered successful. 
 - `--parameters-file <parametersFile>` Supply a file with parameters to override. File format should be 'name=value' divided by new line.
