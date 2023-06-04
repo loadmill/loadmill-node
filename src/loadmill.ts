@@ -26,6 +26,7 @@ program
     .option("--labels <labels>", "Run flows that are assigned to a specific label (when running a test suite).. Multiple labels can be provided by seperated them with ',' (e.g. 'label1,label2').")
     .option("--labels-expression <labelsExpression>", "Run a test plan's suites with flows that match the labels expression. An expression may contain the characters ( ) & | ! (e.g. '(label1 | label2) & !label3')")
     .option("--pool <pool>", "Execute tests from a dedicated agent's pool (when using private agent)")
+    .option("--tags <tags>", "Tag a test plan run with a comma separated list of tags (e.g. 'tag1,tag2')")
     .option("-w, --wait", "Wait for the test to finish.")
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
@@ -68,6 +69,7 @@ async function start() {
         labels,
         labelsExpression,
         pool,
+        tags,
         branch,
         retryFailedFlows,
         parametersFile,
@@ -106,6 +108,7 @@ async function start() {
             labels,
             labelsExpression,
             pool,
+            tags,
             branch,
             retryFailedFlows,
             parameters,
@@ -134,11 +137,14 @@ async function start() {
 
     let res: Loadmill.TestResult | undefined;
     if (testPlan || !loadTest) {
-        const planLabels = convertStrToArr(labels)
-
+        
         if (!isUUID(input)) { //if test plan flag is on then the input should be uuid
             validationFailed("Test plan run flag is on but no valid test plan id was provided.");
         }
+
+        const planLabels = convertStrToArr(labels);
+        const planTags = convertStrToArr(tags);
+
         try {
             logger.verbose(`Executing test plan with id ${input}`);
             let running = await loadmill.runTestPlan(
@@ -149,6 +155,7 @@ async function start() {
                         labels: planLabels,
                         labelsExpression,
                         pool,
+                        tags : planTags,
                         parallel, 
                         branch,
                         maxFlakyFlowRetries: retryFailedFlows,
