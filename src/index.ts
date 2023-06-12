@@ -98,6 +98,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const tags = testPlan.options && testPlan.options.tags && filterTags(testPlan.options.tags);
         const parallel = testPlan.options && testPlan.options.parallel;
         const branch = testPlan.options && testPlan.options.branch;
+        const inlineParameterOverride = !!(testPlan.options && testPlan.options.inlineParameterOverride);
         const maxFlakyFlowRetries = testPlan.options && testPlan.options.maxFlakyFlowRetries;
         const {
             body: {
@@ -105,7 +106,9 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 err
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ overrideParameters, additionalDescription, labels, pool, parallel, tags, branch, maxFlakyFlowRetries, labelsExpression })
+            .send({ 
+                overrideParameters, additionalDescription, labels, pool, parallel, tags, branch, maxFlakyFlowRetries, labelsExpression, inlineParameterOverride
+            })
             .auth(token, '');
 
         if (err || !testPlanRunId) {
@@ -339,6 +342,7 @@ namespace Loadmill {
         branch?: string;
         maxFlakyFlowRetries?: number | string;
         parametersFile?: string;
+        inlineParameterOverride?: boolean;
     }
     export interface TestResult extends TestDef {
         url: string;
