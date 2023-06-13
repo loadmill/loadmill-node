@@ -40,6 +40,7 @@ program
     .option("-b, --branch <branch>", "Run the test plan's suites from a GitHub branch. The latest version of the selected Git branch will be used as the test configuration for the chosen Test Plan")
     .option("--retry-failed-flows <numberOfRetries>", "Configure the test plan to re-run failed flows in case your tested system is unstable. Tests that pass after a retry will be considered successful.")
     .option("--parameters-file <parametersFile>", "Supply a file with parameters to override. File format should be 'name=value' divided by new line.")
+    .option("--inlineParameterOverride", "Override parameters strategy: by default, overrided parameters are appended to the end of the parameters list. Using this flag will replace the parameters inline.")
     .parse(process.argv);
 
 start()
@@ -73,6 +74,7 @@ async function start() {
         branch,
         retryFailedFlows,
         parametersFile,
+        inlineParameterOverride,
         args: [input, ...rawParams]
     } = program;
 
@@ -111,6 +113,7 @@ async function start() {
             tags,
             branch,
             retryFailedFlows,
+            inlineParameterOverride,
             parameters,
         });
     }
@@ -159,6 +162,7 @@ async function start() {
                         parallel, 
                         branch,
                         maxFlakyFlowRetries: retryFailedFlows,
+                        inlineParameterOverride,
                     }
                 },
                 parameters);
