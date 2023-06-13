@@ -179,4 +179,4 @@ Full list of command line options:
 - `-m, --mochawesome-report` Create Test Suite (mochawesome style) report when the suite has ended.
 - `--mochawesome-report-path <mochawesomeReportPath>` Save JSON mochawesome styled report to a path (defaults to current location) when `-m` flag is on.
 - `--colors` Print test results in color.
-- `inlineParameterOverride` Override parameters strategy - by default overrided parameters are appended to the end of the parameters list. Using this flag will replace the parameters inline.
+- `--inlineParameterOverride` Override parameters strategy - by default overrided parameters are appended to the end of the parameters list. Using this flag will replace the parameters inline.
