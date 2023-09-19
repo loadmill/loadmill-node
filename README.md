@@ -180,3 +180,4 @@ Full list of command line options:
 - `--mochawesome-report-path <mochawesomeReportPath>` Save JSON mochawesome styled report to a path (defaults to current location) when `-m` flag is on.
 - `--colors` Print test results in color.
 - `--inlineParameterOverride` Override parameters strategy - by default overrided parameters are appended to the end of the parameters list. Using this flag will replace the parameters inline.
+- `--apiCatalogService <apiCatalogService>` Use the provided service when mapping the APIs in the catalog. Service will be created if not exist.
