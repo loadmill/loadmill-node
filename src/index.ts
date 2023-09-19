@@ -100,6 +100,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const branch = testPlan.options && testPlan.options.branch;
         const inlineParameterOverride = !!(testPlan.options && testPlan.options.inlineParameterOverride);
         const maxFlakyFlowRetries = testPlan.options && testPlan.options.maxFlakyFlowRetries;
+        const apiCatalogService = testPlan.options && testPlan.options.apiCatalogService;
         const {
             body: {
                 testPlanRunId,
@@ -107,7 +108,17 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             }
         } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
             .send({ 
-                overrideParameters, additionalDescription, labels, pool, parallel, tags, branch, maxFlakyFlowRetries, labelsExpression, inlineParameterOverride
+                overrideParameters,
+                additionalDescription,
+                labels,
+                pool,
+                parallel,
+                tags,
+                branch,
+                maxFlakyFlowRetries,
+                labelsExpression,
+                inlineParameterOverride,
+                apiCatalogService,
             })
             .auth(token, '');
 
@@ -343,6 +354,7 @@ namespace Loadmill {
         maxFlakyFlowRetries?: number | string;
         parametersFile?: string;
         inlineParameterOverride?: boolean;
+        apiCatalogService?: string;
     }
     export interface TestResult extends TestDef {
         url: string;
