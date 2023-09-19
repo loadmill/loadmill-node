@@ -41,6 +41,7 @@ program
     .option("--retry-failed-flows <numberOfRetries>", "Configure the test plan to re-run failed flows in case your tested system is unstable. Tests that pass after a retry will be considered successful.")
     .option("--parameters-file <parametersFile>", "Supply a file with parameters to override. File format should be 'name=value' divided by new line.")
     .option("--inlineParameterOverride", "Override parameters strategy: by default, overrided parameters are appended to the end of the parameters list. Using this flag will replace the parameters inline.")
+    .option("--apiCatalogService <apiCatalogService>", "Use the provided service when mapping the APIs in the catalog. Service will be created if not exist")
     .parse(process.argv);
 
 start()
@@ -75,6 +76,7 @@ async function start() {
         retryFailedFlows,
         parametersFile,
         inlineParameterOverride,
+        apiCatalogService,
         args: [input, ...rawParams]
     } = program;
 
@@ -114,6 +116,7 @@ async function start() {
             branch,
             retryFailedFlows,
             inlineParameterOverride,
+            apiCatalogService,
             parameters,
         });
     }
@@ -163,6 +166,7 @@ async function start() {
                         branch,
                         maxFlakyFlowRetries: retryFailedFlows,
                         inlineParameterOverride,
+                        apiCatalogService,
                     }
                 },
                 parameters);
