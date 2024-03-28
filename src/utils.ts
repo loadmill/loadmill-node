@@ -3,12 +3,42 @@ import isEmpty = require('lodash/isEmpty');
 import isAString = require('lodash/isString');
 import * as util from 'util';
 
+const CLI_COLORS = {
+    RED: '\x1b[31m',
+    GREEN: '\x1b[32m',
+    YELLOW: '\x1b[33m',
+    GREY: '\x1b[90m',
+    DEFAULT: '\x1b[0m'
+}
+
+const STATUSES = {
+    PASSED: "PASSED",
+    FAILED: "FAILED",
+    STOPPED: "STOPPED",
+    FLAKY: "FLAKY",
+};
+
+const HALF_TAB = "  ";
+
+function failedFlowLine(f: any, colors: any): string {
+    return `${HALF_TAB}${HALF_TAB}Flow ${f.description} - ${coloredFlowLine(f.status, colors)}`;
+}
+const FAILED_STATUS_LINE = `status: '${CLI_COLORS.RED}FAILED${CLI_COLORS.DEFAULT}'`;
+const PASSED_STATUS_LINE = `status: '${CLI_COLORS.GREEN}PASSED${CLI_COLORS.DEFAULT}'`;
+
 export const getObjectAsString = (obj, colors) => {
     // trim response body to length of 255
     if (obj.response && obj.response.text && obj.response.text.length > 1024) {
         obj.response.text = obj.response.text.substring(0, 1024) + ' [trimmed]'
     }
-    return util.inspect(obj, { showHidden: false, depth: null, colors: colors, compact: false } as any);
+    
+    let str = util.inspect(obj, { showHidden: false, depth: null, compact: false } as any);
+    if (colors) {
+        str = str
+        .replace(/status:\s*'FAILED'/g, FAILED_STATUS_LINE)
+        .replace(/status:\s*'PASSED'/g, PASSED_STATUS_LINE);
+    } 
+    return str;
 }
 
 const coloredFlowLine = (status, colors) => {
@@ -18,19 +48,42 @@ const coloredFlowLine = (status, colors) => {
     return `${getStatusColor(status)}${status}${CLI_COLORS.DEFAULT}`;
 }
 
-export const printFlowRunsReport = (suiteDescription, suiteFlowRuns, logger, colors) => {
-    if (suiteFlowRuns) {
-        logger.log("");
-        logger.log(`Test Suite [${suiteDescription}] Flow Runs report:`);
-        suiteFlowRuns.map(
-            f => logger.log(`Flow ${f.description} - ${coloredFlowLine(f.status, colors)}`));
-    }
+export const printOnlyFailedFlowRunsReport = (testSuitesRuns, logger, colors) => {
+    if (testSuitesRuns && Array.isArray(testSuitesRuns)) {
+        let total = 0;
+        let totalFailed = 0;
+        let lines: Array<string> =[]
+        testSuitesRuns.forEach(suiteRun => {
+            const { flowRuns } = suiteRun;
+            if (flowRuns && Array.isArray(flowRuns)) {
+                total += flowRuns.length;
+                const suiteLines: Array<string> =[]
+                flowRuns.forEach((f) => {
+                    if (f.status === STATUSES.FAILED) {
+                        suiteLines.push(failedFlowLine(f, colors))
+                    }
+                });
+                if (suiteLines.length > 0) {
+                    lines.push("");
+                    lines.push(`${HALF_TAB}Test Suite ${suiteRun.description} has failed flow:`);
+                    lines = lines.concat(suiteLines);
+                    lines.push(`${HALF_TAB}More info can be found at ${suiteRun.url}`);
+                    totalFailed += suiteLines.length;
+                }
+            }
+        });
+        if (lines.length >0) {
+            logger.log("");
+            logger.log(`Test Plan errors report - ${CLI_COLORS.RED}${totalFailed} flows have failed ${CLI_COLORS.DEFAULT} (out of ${total} total).`)
+            lines.forEach(l=> logger.log(l));
+        }
+}
 }
 
 export const printTestSuitesRunsReport = (testPlanDescription, testSuitesRuns, logger, colors) => {
-    if (testSuitesRuns) {
+    if (testSuitesRuns && Array.isArray(testSuitesRuns)) {
         logger.log("");
-        logger.log(`Test Plan [${testPlanDescription}] Test Suites Runs report:`);
+        logger.log(`Test Plan [${testPlanDescription}] Suites Runs report:`);
         testSuitesRuns.map(
             ts => logger.log(`Test Suite ${ts.description} - ${coloredFlowLine(ts.status, colors)}`));
     }
@@ -137,25 +190,17 @@ export const getLogger = (testArgs) => {
 
 const getStatusColor = (status) => {
     switch (status) {
-        case "PASSED":
+        case STATUSES.PASSED:
             return CLI_COLORS.GREEN;
-        case "FAILED":
+        case STATUSES.FAILED:
             return CLI_COLORS.RED;
-        case "STOPPED":
+        case STATUSES.STOPPED:
             return CLI_COLORS.GREY;
-        case "FLAKY":
+        case STATUSES.FLAKY:
             return CLI_COLORS.YELLOW;
         default:
             return CLI_COLORS.DEFAULT;
     }
-}
-
-const CLI_COLORS = {
-    RED: '\x1b[31m',
-    GREEN: '\x1b[32m',
-    YELLOW: '\x1b[33m',
-    GREY: '\x1b[90m',
-    DEFAULT: '\x1b[0m'
 }
 
 export const TESTING_HOST = process.env.LOADMILL_SERVER_HOST || "app.loadmill.com";
