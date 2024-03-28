@@ -5,7 +5,6 @@ const timeout = 80000;
 const uuidPattern = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const token = process.env.TOKEN;
 const url = process.env.URL;
-const suiteId = process.env.SUITE_ID;
 const testPlanId = process.env.TEST_PLAN_ID;
 const additionalDescription = "npm-unit-test"
 
