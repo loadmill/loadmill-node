@@ -49,7 +49,7 @@ const coloredFlowLine = (status, colors) => {
 }
 
 export const printOnlyFailedFlowRunsReport = (testSuitesRuns, logger, colors) => {
-    if (testSuitesRuns && Array.isArray(testSuitesRuns)) {
+    if (Array.isArray(testSuitesRuns) && testSuitesRuns.length > 0) {
         let total = 0;
         let totalFailed = 0;
         let lines: Array<string> =[]
@@ -81,7 +81,7 @@ export const printOnlyFailedFlowRunsReport = (testSuitesRuns, logger, colors) =>
 }
 
 export const printTestSuitesRunsReport = (testPlanDescription, testSuitesRuns, logger, colors) => {
-    if (testSuitesRuns && Array.isArray(testSuitesRuns)) {
+    if (Array.isArray(testSuitesRuns) && testSuitesRuns.length > 0) {
         logger.log("");
         logger.log(`Test Plan [${testPlanDescription}] Suites Runs report:`);
         testSuitesRuns.map(
