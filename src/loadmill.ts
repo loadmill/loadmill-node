@@ -8,6 +8,7 @@ import {
     printTestSuitesRunsReport,
     toLoadmillParams,
     readRawParams,
+    printOnlyFailedFlowRunsReport,
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
@@ -31,7 +32,8 @@ program
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
     .option("-v, --verbose", "Print out extra information for debugging.")
-    .option("-r, --report", "Print out Test Suite Flow Runs report when the suite has ended.")
+    .option("-r, --report", "Print out Test Suite Flow Runs report when the plan has ended.")
+    .option("--errors-report", "Print out Test Suite Flow Runs errors report when the plan has ended.")
     .option("-j, --junit-report", "Create Test Suite (junit style) report when the suite has ended.")
     .option("--junit-report-path <junitReportPath>", "Save junit styled report to a path (defaults to current location).")
     .option("-m, --mochawesome-report", "Create Test Suite (mochawesome style) report when the suite has ended.")
@@ -60,6 +62,7 @@ async function start() {
         verbose,
         colors,
         report,
+        errorsReport,
         junitReport,
         junitReportPath,
         mochawesomeReport,
@@ -100,6 +103,7 @@ async function start() {
             verbose,
             colors,
             report,
+            errorsReport,
             junitReport,
             junitReportPath,
             mochawesomeReport,
@@ -150,7 +154,7 @@ async function start() {
 
         const planLabels = convertStrToArr(labels);
         const planTags = convertStrToArr(tags);
-
+        
         try {
             logger.verbose(`Executing test plan with id ${input}`);
             let running = await loadmill.runTestPlan(
@@ -183,6 +187,10 @@ async function start() {
 
                     if (report && res.testSuitesRuns) {
                         printTestSuitesRunsReport(res.description, res.testSuitesRuns, logger, colors);
+                    }
+
+                    if (errorsReport && res.testSuitesRuns) {
+                        printOnlyFailedFlowRunsReport(res.testSuitesRuns, logger, colors);
                     }
 
                     if (res) {
