@@ -51,7 +51,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
                     const testResult: Loadmill.TestResult = toTestResult(testDef, webUrl, body);
 
-                    redactData(testResult, body);
+                    redactData(testResult, body, testingServer);
 
                     if (callback) {
                         callback(null, testResult);
@@ -205,8 +205,8 @@ function toTestResult(testDef: Loadmill.TestDef, webUrl: string, body: any): Loa
     };
 }
 
-function redactData(testResult: Loadmill.TestResult, body: any) {
-    testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns);
+function redactData(testResult: Loadmill.TestResult, body: any, testingServer: string) {
+    testResult.testSuitesRuns = reductTestSuitesRuns(body.testSuitesRuns, testingServer);
 }
 
 function isTestInFinalState(body, runType) {
@@ -246,7 +246,7 @@ function getTestWebUrl({ id, type }: Loadmill.TestDef, server: string) {
     }
 }
 
-function reductTestSuitesRuns(suitesRuns) {
+function reductTestSuitesRuns(suitesRuns, testingServer) {
     if (suitesRuns) {
         return suitesRuns.map(s => {
             const suiteRun: Loadmill.TestResult =
@@ -255,7 +255,7 @@ function reductTestSuitesRuns(suitesRuns) {
                 type: Loadmill.TYPES.SUITE,
                 description: s.description,
                 status: s.status,
-                url: s.url,
+                url: getTestWebUrl({ id: s.id, type: Loadmill.TYPES.SUITE }, testingServer),
                 passed: s.status === "PASSED",
                 startTime: s.startTime,
                 endTime: s.endTime
