@@ -101,6 +101,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const inlineParameterOverride = !!(testPlan.options && testPlan.options.inlineParameterOverride);
         const maxFlakyFlowRetries = testPlan.options && testPlan.options.maxFlakyFlowRetries;
         const apiCatalogService = testPlan.options && testPlan.options.apiCatalogService;
+        const turboParallel = !!(testPlan.options && testPlan.options.turboParallel);
         const {
             body: {
                 testPlanRunId,
@@ -119,6 +120,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 labelsExpression,
                 inlineParameterOverride,
                 apiCatalogService,
+                turboParallel,
             })
             .auth(token, '');
 
@@ -355,6 +357,7 @@ namespace Loadmill {
         parametersFile?: string;
         inlineParameterOverride?: boolean;
         apiCatalogService?: string;
+        turboParallel?: boolean;
     }
     export interface TestResult extends TestDef {
         url: string;
