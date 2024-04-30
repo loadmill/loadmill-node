@@ -44,6 +44,7 @@ program
     .option("--parameters-file <parametersFile>", "Supply a file with parameters to override. File format should be 'name=value' divided by new line.")
     .option("--inlineParameterOverride", "Override parameters strategy: by default, overrided parameters are appended to the end of the parameters list. Using this flag will replace the parameters inline.")
     .option("--apiCatalogService <apiCatalogService>", "Use the provided service when mapping the APIs in the catalog. Service will be created if not exist")
+    .option("--turbo-parallel", "Run the test plan in turbo mode")
     .parse(process.argv);
 
 start()
@@ -80,6 +81,7 @@ async function start() {
         parametersFile,
         inlineParameterOverride,
         apiCatalogService,
+        turboParallel,
         args: [input, ...rawParams]
     } = program;
 
@@ -121,6 +123,7 @@ async function start() {
             retryFailedFlows,
             inlineParameterOverride,
             apiCatalogService,
+            turboParallel,
             parameters,
         });
     }
@@ -171,6 +174,7 @@ async function start() {
                         maxFlakyFlowRetries: retryFailedFlows,
                         inlineParameterOverride,
                         apiCatalogService,
+                        turboParallel,
                     }
                 },
                 parameters);
