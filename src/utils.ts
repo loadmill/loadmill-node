@@ -18,6 +18,13 @@ const STATUSES = {
     FLAKY: "FLAKY",
 };
 
+export enum FLOW_STATUS {
+    DISABLED = 'Disabled',
+    DRAFT = 'Draft',
+    EVALUATING = 'Evaluating',
+    ACTIVE = 'Active',
+};
+
 const HALF_TAB = "  ";
 
 function failedFlowLine(f: any, colors: any): string {
@@ -59,7 +66,7 @@ export const printOnlyFailedFlowRunsReport = (testSuitesRuns, logger, colors) =>
                 total += flowRuns.length;
                 const suiteLines: Array<string> =[]
                 flowRuns.forEach((f) => {
-                    if (f.status === STATUSES.FAILED) {
+                    if (f.status === STATUSES.FAILED && f.flowStatus === FLOW_STATUS.ACTIVE) {
                         suiteLines.push(failedFlowLine(f, colors))
                     }
                 });

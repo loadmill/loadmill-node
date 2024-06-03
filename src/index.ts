@@ -7,6 +7,7 @@ import {
     TESTING_HOST,
     toLoadmillParams,
     readRawParams,
+    FLOW_STATUS,
 } from './utils';
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
@@ -267,7 +268,8 @@ function reductTestSuitesRuns(suitesRuns) {
                 suiteRun.flowRuns = s.testSuiteFlowRuns.map(fr => ({
                     id: fr.id,
                     status: fr.status,
-                    description: fr.description
+                    description: fr.description,
+                    flowStatus: fr.testSuiteFlowStatus
                 }));
             }
 
@@ -374,6 +376,7 @@ namespace Loadmill {
         id: string;
         status: string;
         description: string;
+        flowStatus: FLOW_STATUS;
     }
 
     export type Configuration = object | string | any; // todo: bad typescript
