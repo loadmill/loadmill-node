@@ -258,6 +258,14 @@ function getFlowRunAPI(f: Loadmill.FlowRun) {
     return `${testingServer}/api/test-suites-runs/flows/${f.id}`;
 }
 
+function generateCodeBlock(s: Loadmill.TestResult, f: Loadmill.FlowRun) {
+    let res = `URL: ${getFlowRunWebURL(s, f)}`;
+    if (f.retries) {
+        res += `\nRetries: ${f.retries}`;
+    }
+    return res;
+}
+
 function getFlowRunWebURL(s: Loadmill.TestResult, f: Loadmill.FlowRun) {
     return `${testingServer}/app/api-tests/test-suite-runs/${s.id}/flows/${f.id}`;
 }
@@ -290,21 +298,21 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
     const url = getFlowRunAPI(flow);
     const { body: flowData } = await superagent.get(url).auth(token, '');
 
-    const hasPassed = flow.status === 'PASSED';
+    const hasPassed = _hasPassed(flow);
     const hasFailed = flow.status === 'FAILED';
     const res =
     {
         "title": flow.description,
         "fullTitle": flow.description,
         "timedOut": false,
-        "duration": (flowData.endTime - flowData.startTime) || 0,
+        "duration": flow.duration,
         "state": hasPassed ? 'passed' : 'failed',
         "pass": hasPassed,
         "fail": hasFailed,
         "isHook": false,
         "skipped": false,
         "pending": false,
-        "code": getFlowRunWebURL(suite, flow),
+        "code": generateCodeBlock(suite, flow),
         "err": hasFailed ? toMochawesomeFailedFlow(flowData) : {},
         "uuid": flow.id
     }
@@ -314,7 +322,7 @@ const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.Flow
 const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => {
 
     const flows = suite.flowRuns || [];
-    const passedFlows = flows.filter(f => f.status === 'PASSED').map(f => f.id);
+    const passedFlows = flows.filter(f => _hasPassed(f)).map(f => f.id);
     const failedFlows = flows.filter(f => f.status === 'FAILED').map(f => f.id);
 
     const limit = pLimit(3);
@@ -322,7 +330,7 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
     return {
         "title": suite.description,
         "tests": await Promise.all(
-            flows.filter(flow => ['PASSED', 'FAILED'].includes(flow.status))
+            flows.filter(flow => _hasPassed(flow) || flow.status === 'FAILED')
             .map(f => limit(() => flowToMochawesone(suite, f, token)))
         ),
         "duration": ((+suite.endTime || Date.now()) - +suite.startTime),
@@ -418,3 +426,8 @@ function getFirstExecutedSuiteTime(suites: Loadmill.TestResult[]) {
     });
     return new Date(firstSuite.startTime);
 }
+
+const _hasPassed = (flow: Loadmill.FlowRun): boolean => flow.status === 'PASSED' || _isFlaky(flow);
+
+// check by status alone is not enough because of backward compatibility
+const _isFlaky = (flow: Loadmill.FlowRun): boolean => flow.status === 'FLAKY' && !!flow.retries;

@@ -46,7 +46,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                     clearInterval(intervalId);
 
                     if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
-                        const { body: bodyWithFlows } = await superagent.get(`${apiUrl}?fetchAllFlows=true`).auth(token, '');
+                        const { body: bodyWithFlows } = await superagent.get(apiUrl, { fetchAllFlows: true, groupFlowAttempts: true }).auth(token, '');
                         body = bodyWithFlows;
                     }
 
@@ -265,12 +265,22 @@ function reductTestSuitesRuns(suitesRuns) {
             }
 
             if (Array.isArray(s.testSuiteFlowRuns)) {
-                suiteRun.flowRuns = s.testSuiteFlowRuns.map(fr => ({
-                    id: fr.id,
-                    status: fr.status,
-                    description: fr.description,
-                    flowStatus: fr.testSuiteFlowStatus
-                }));
+                suiteRun.flowRuns = s.testSuiteFlowRuns.map(fr => {
+                    const flowRun: Loadmill.FlowRun = {
+                        id: fr.id,
+                        status: fr.status,
+                        description: fr.description,
+                        flowStatus: fr.testSuiteFlowStatus,
+                        duration: (fr.endTime - fr.startTime) || 0,
+                    };
+
+                    if (fr.runs?.length) {
+                        flowRun.retries = fr.runs.length - 1;
+                        flowRun.duration = fr.runs[fr.runs.length - 1].endTime - fr.runs[0].startTime;
+                    }
+
+                    return flowRun;
+                });
             }
 
             return suiteRun;
@@ -377,6 +387,8 @@ namespace Loadmill {
         status: string;
         description: string;
         flowStatus: FLOW_STATUS;
+        duration: number;
+        retries?: number;
     }
 
     export type Configuration = object | string | any; // todo: bad typescript

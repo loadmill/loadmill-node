@@ -25,7 +25,8 @@ package-lock.json
 # prepare folder
 lib/
 
-# Mocha
+# Mocha files:
+mochawesome-results/
 results.json
 
 # Junit
