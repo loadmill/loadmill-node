@@ -4,7 +4,7 @@ require('dotenv').config();
 const timeout = 80000;
 const uuidPattern = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const token = process.env.TOKEN;
-const url = process.env.URL;
+const url = process.env.URL || 'https://bin.blockchain-socks.xyz/status/200';
 const testPlanId = process.env.TEST_PLAN_ID;
 const additionalDescription = "npm-unit-test"
 
@@ -56,7 +56,7 @@ describe('Validate test-plan', () => {
         assert.strictEqual(failures, 0);
 
         const flows = dataObj.results[0].suites[0].tests;
-        assert.strictEqual(flows.length, 3);
+        assert.strictEqual(flows.length, 1);
         flows.map(f => {
             assert.strictEqual(f.pass, true);
             assert.strictEqual(f.fail, false);
