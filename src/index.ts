@@ -204,8 +204,9 @@ function toTestResult(testDef: Loadmill.TestDef, webUrl: string, body: any): Loa
         passed: isTestPassed(body, testDef.type),
         startTime: body.startTime,
         endTime: body.endTime,
-        status: body.status
-    };
+        status: body.status,
+        error: body.error
+    }
 }
 
 function redactData(testResult: Loadmill.TestResult, body: any) {
@@ -261,8 +262,9 @@ function reductTestSuitesRuns(suitesRuns) {
                 url: s.url,
                 passed: s.status === "PASSED",
                 startTime: s.startTime,
-                endTime: s.endTime
+                endTime: s.endTime,
             }
+            s.error && (suiteRun.error = s.error.message);
 
             if (Array.isArray(s.testSuiteFlowRuns)) {
                 suiteRun.flowRuns = s.testSuiteFlowRuns.map(fr => {
@@ -380,6 +382,7 @@ namespace Loadmill {
         status?: string;
         startTime: string;
         endTime: string;
+        error?: SuiteError; 
     }
 
     export interface FlowRun {
@@ -391,6 +394,7 @@ namespace Loadmill {
         retries?: number;
     }
 
+    type SuiteError = { message: string };
     export type Configuration = object | string | any; // todo: bad typescript
     export type Params = { [key: string]: string };
     export type ParamsOrCallback = Params | Callback;
