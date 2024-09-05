@@ -4,7 +4,7 @@ import * as superagent from 'superagent';
 import {
     filterLabels,
     filterTags,
-    TESTING_HOST,
+    TESTING_ORIGIN,
     toLoadmillParams,
     readRawParams,
     FLOW_STATUS,
@@ -18,11 +18,11 @@ export = Loadmill;
 function Loadmill(options: Loadmill.LoadmillOptions) {
     const {
         token,
-        _testingServerHost = TESTING_HOST
+        _testingServerHost
     } = options as any;
 
 
-    const testingServer = "https://" + _testingServerHost;
+    const testingServer = _testingServerHost ? `https://${_testingServerHost}` : TESTING_ORIGIN;
     const testPlansAPI = `${testingServer}/api/test-plans`;
 
     async function _wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
