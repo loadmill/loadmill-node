@@ -10,9 +10,7 @@ import find = require('lodash/find');
 import forEach = require('lodash/forEach');
 import includes = require('lodash/includes');
 
-import { TESTING_HOST, sleep } from './utils';
-
-const testingServer = "https://" + TESTING_HOST;
+import { TESTING_ORIGIN as testingServer, sleep } from './utils';
 
 const POLLING_INTERVAL_MS = 5000;
 const MAX_POLLING = 36; // 3 minutes

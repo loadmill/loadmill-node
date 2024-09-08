@@ -210,4 +210,4 @@ const getStatusColor = (status) => {
     }
 }
 
-export const TESTING_HOST = process.env.LOADMILL_SERVER_HOST || "app.loadmill.com";
+export const TESTING_ORIGIN = process.env.LOADMILL_ORIGIN  || "https://app.loadmill.com";
