@@ -205,7 +205,6 @@ function toTestResult(testDef: Loadmill.TestDef, webUrl: string, body: any): Loa
         startTime: body.startTime,
         endTime: body.endTime,
         status: body.status,
-        error: body.error
     }
 }
 
