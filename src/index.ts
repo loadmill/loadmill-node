@@ -1,6 +1,7 @@
 import './polyfills'
 import * as fs from 'fs';
-import * as superagent from 'superagent';
+import { Agent, AgentOptions } from 'http';
+import * as _superagent from 'superagent';
 import {
     filterLabels,
     filterTags,
@@ -17,10 +18,13 @@ export = Loadmill;
 
 function Loadmill(options: Loadmill.LoadmillOptions) {
     const {
-        token,
+        token:_token,
+        httpOptions,
         _testingServerHost
     } = options as any;
 
+  const myAgent = new Agent(httpOptions && httpOptions.agentOptions)
+  const request = _superagent.auth(_token, '').agent().use((req: { agent: (arg0: Agent) => any; }) => req.agent(myAgent))
 
     const testingServer = _testingServerHost ? `https://${_testingServerHost}` : TESTING_ORIGIN;
     const testPlansAPI = `${testingServer}/api/test-plans`;
@@ -39,14 +43,13 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         let retries = 1;
         const intervalId = setInterval(async () => {
             try {
-                let { body } = await superagent.get(apiUrl)
-                    .auth(token, '');
+                let { body } = await request.get(apiUrl);
 
                 if (isTestInFinalState(body, testDef.type)) {
                     clearInterval(intervalId);
 
                     if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
-                        const { body: bodyWithFlows } = await superagent.get(apiUrl, { fetchAllFlows: true, groupFlowAttempts: true }).auth(token, '');
+                        const { body: bodyWithFlows } = await request.get(apiUrl, { fetchAllFlows: true, groupFlowAttempts: true });
                         body = bodyWithFlows;
                     }
 
@@ -108,8 +111,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 testPlanRunId,
                 err
             }
-        } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ 
+        } = await request.post(`${testPlansAPI}/${testPlanId}/run`)
+            .send({
                 overrideParameters,
                 additionalDescription,
                 labels,
@@ -122,8 +125,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 inlineParameterOverride,
                 apiCatalogService,
                 turboParallel,
-            })
-            .auth(token, '');
+            });
 
         if (err || !testPlanRunId) {
             console.error(err ? JSON.stringify(err) : "The server encountered an error while handling the request");
@@ -133,11 +135,11 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
     }
 
     async function _junitReport(testResult: Loadmill.TestResult, path?: string) {
-        return createJunitReport(testResult, token, path);
+        return createJunitReport(testResult, request, path);
     }
 
     async function _mochawesomeReport(testResult: Loadmill.TestResult, path?: string) {
-        return createMochawesomeReport(testResult, token, path);
+        return createMochawesomeReport(testResult, path, request);
     }
 
     return {
@@ -150,12 +152,10 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 async () => {
                     config = toConfig(config, paramsOrCallback);
 
-                    const { body: { testId } } = await superagent.post(testingServer + "/api/tests")
-                        .send(config)
-                        .auth(token, '');
+                    const { body: { testId } } = await request.post(testingServer + "/api/tests")
+                        .send(config);
 
-                    await superagent.put(`${testingServer}/api/tests/${testId}/load`)
-                        .auth(token, '');
+                    await request.put(`${testingServer}/api/tests/${testId}/load`);
 
                     return testId;
                 },
@@ -333,8 +333,12 @@ function toParams(params: Loadmill.Params = {}, filePath?: string) {
 }
 
 namespace Loadmill {
+  export interface HttpOptions {
+      agentOptions?: AgentOptions;
+  }
     export interface LoadmillOptions {
         token: string;
+        httpOptions?: HttpOptions;
     }
     export interface TestDef {
         id: string;
@@ -381,7 +385,7 @@ namespace Loadmill {
         status?: string;
         startTime: string;
         endTime: string;
-        error?: SuiteError; 
+        error?: SuiteError;
     }
 
     export interface FlowRun {
@@ -406,5 +410,5 @@ namespace Loadmill {
         LOAD = 'load',
         SUITE = 'test-suite',
         TEST_PLAN = 'test-plan'
-    };
+    }
 }

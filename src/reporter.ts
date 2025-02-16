@@ -1,7 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as Loadmill from "./index";
-import * as superagent from 'superagent';
+
+import {sleep, TESTING_ORIGIN as testingServer} from './utils';
+
 const pLimit = require('p-limit');
 
 import flatMap = require('lodash/flatMap');
@@ -10,34 +12,30 @@ import find = require('lodash/find');
 import forEach = require('lodash/forEach');
 import includes = require('lodash/includes');
 
-import { TESTING_ORIGIN as testingServer, sleep } from './utils';
-
 const POLLING_INTERVAL_MS = 5000;
 const MAX_POLLING = 36; // 3 minutes
 
 const generateJunitReport = async (
     testId: string,
     runType: Loadmill.TYPES,
-    token: string
+    request: any
 ): Promise<string | undefined> => {
     try {
-        const { body: { junitReportId } } = await superagent.post(junitReportAPI)
-            .send({ testId, runType })
-            .auth(token, '');
-    
+        const { body: { junitReportId } } = await request.post(junitReportAPI)
+            .send({ testId, runType });
+
         return junitReportId;
     } catch (err) {
         handleJunitFailed(err.message);
     }
 };
 
-const waitForAndSaveJunitReport = async (reportId: string, token: string, path?: string) => {
+const waitForAndSaveJunitReport = async (reportId: string, request: any, path?: string) => {
     let polling_count = 0;
 
     while (polling_count < MAX_POLLING) {
         try {
-            const { body: { junitReport } } = await superagent.get(`${junitReportAPI}/${reportId}`)
-                .auth(token, '');
+            const { body: { junitReport } } = await request.get(`${junitReportAPI}/${reportId}`);
 
             saveJunitReport(junitReport, path);
             break;
@@ -91,11 +89,11 @@ const toFailedFlowRunReport = (flowRun, formater) => {
     if (result.flow) {
         const { flow, afterEach } = result;
         appendFlowRunFailures(errs, formater, flow, redactableResult.flow);
-        
+
         if (afterEach) {
             appendFlowRunFailures(errs, formater, afterEach, redactableResult.afterEach, flow.resolvedRequests.length);
         }
-    } 
+    }
     else {
         appendFlowRunFailures(errs, formater, result, redactableResult);
     }
@@ -155,7 +153,7 @@ const appendFlowRunFailures = (errs: string[], formater, result, redactableResul
                 });
             }
         });
-    } 
+    }
     else if (err) {
         errs.push(typeof err === 'string' ? err : err.message)
     }
@@ -291,33 +289,31 @@ const toMochawesomeFailedFlow = (flowRun) => {
     };
 };
 
-const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.FlowRun, token: string) => {
+const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.FlowRun, request: any) => {
 
     const url = getFlowRunAPI(flow);
-    const { body: flowData } = await superagent.get(url).auth(token, '');
+    const { body: flowData } = await request.get(url);
 
     const hasPassed = _hasPassed(flow);
     const hasFailed = flow.status === 'FAILED';
-    const res =
-    {
-        "title": flow.description,
-        "fullTitle": flow.description,
-        "timedOut": false,
-        "duration": flow.duration,
-        "state": hasPassed ? 'passed' : 'failed',
-        "pass": hasPassed,
-        "fail": hasFailed,
-        "isHook": false,
-        "skipped": false,
-        "pending": false,
-        "code": generateCodeBlock(suite, flow),
-        "err": hasFailed ? toMochawesomeFailedFlow(flowData) : {},
-        "uuid": flow.id
-    }
-    return res;
+  return {
+      "title": flow.description,
+      "fullTitle": flow.description,
+      "timedOut": false,
+      "duration": flow.duration,
+      "state": hasPassed ? 'passed' : 'failed',
+      "pass": hasPassed,
+      "fail": hasFailed,
+      "isHook": false,
+      "skipped": false,
+      "pending": false,
+      "code": generateCodeBlock(suite, flow),
+      "err": hasFailed ? toMochawesomeFailedFlow(flowData) : {},
+      "uuid": flow.id
+    };
 };
 
-const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => {
+const suiteToMochawesone = async (suite: Loadmill.TestResult, request: any) => {
 
     const flows = suite.flowRuns || [];
     const passedFlows = flows.filter(f => _hasPassed(f)).map(f => f.id);
@@ -329,7 +325,7 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
         "title": suite.description,
         "tests": await Promise.all(
             flows.filter(flow => _hasPassed(flow) || flow.status === 'FAILED')
-            .map(f => limit(() => flowToMochawesone(suite, f, token)))
+            .map(f => limit(() => flowToMochawesone(suite, f, request)))
         ),
         "duration": ((+suite.endTime || Date.now()) - +suite.startTime),
         "suites": [],
@@ -347,7 +343,7 @@ const suiteToMochawesone = async (suite: Loadmill.TestResult, token: string) => 
     }
 };
 
-const generateMochawesomeReport = async (testResult: Loadmill.TestResult, token: string) => {
+const generateMochawesomeReport = async (testResult: Loadmill.TestResult, request: any) => {
     const suites = testResult.testSuitesRuns || [testResult];
     const passedSuites = suites.filter(t => t.passed).length;
     const failedSuites = suites.filter(t => !t.passed).length;
@@ -356,63 +352,62 @@ const generateMochawesomeReport = async (testResult: Loadmill.TestResult, token:
     const suitesLength = suites.length;
     const limit = pLimit(3);
 
-    const res = {
-        "stats": {
-            "suites": suitesLength,
-            "tests": suitesLength,
-            "passes": passedSuites,
-            "failures": failedSuites,
-            "start": (suites[0]? getFirstExecutedSuiteTime(suites) : new Date()).toISOString(),
-            "end": new Date().toISOString(),
-            "pending": 0,
-            "testsRegistered": suitesLength,
-            "pendingPercent": 0,
-            "passPercent": suitesLength == 0 ? 0 : (passedSuites / suitesLength) * 100,
-            "other": 0,
-            "hasOther": false,
-            "skipped": 0,
-            "hasSkipped": false,
-            "duration": duration
-        },
-        "results": [
-            {
-                "title": "Loadmill API tests",
-                "suites": await Promise.all(suites.map(s => limit(() => suiteToMochawesone(s, token)))),
-                "tests": [],
-                "pending": [],
-                "root": true,
-                "_timeout": 0,
-                "uuid": suites[0]? suites[0].id : '123e4567-e89b-12d3-a456-426652340000',
-                "beforeHooks": [],
-                "afterHooks": [],
-                "fullFile": "",
-                "file": "",
-                "passes": [],
-                "failures": [],
-                "skipped": [],
-                "duration": duration,
-                "rootEmpty": true
-            }
-        ]
-    }
-    return res;
+  return {
+      "stats": {
+        "suites": suitesLength,
+        "tests": suitesLength,
+        "passes": passedSuites,
+        "failures": failedSuites,
+        "start": (suites[0] ? getFirstExecutedSuiteTime(suites) : new Date()).toISOString(),
+        "end": new Date().toISOString(),
+        "pending": 0,
+        "testsRegistered": suitesLength,
+        "pendingPercent": 0,
+        "passPercent": suitesLength == 0 ? 0 : (passedSuites / suitesLength) * 100,
+        "other": 0,
+        "hasOther": false,
+        "skipped": 0,
+        "hasSkipped": false,
+        "duration": duration
+      },
+      "results": [
+        {
+          "title": "Loadmill API tests",
+          "suites": await Promise.all(suites.map(s => limit(() => suiteToMochawesone(s, request)))),
+          "tests": [],
+          "pending": [],
+          "root": true,
+          "_timeout": 0,
+          "uuid": suites[0] ? suites[0].id : '123e4567-e89b-12d3-a456-426652340000',
+          "beforeHooks": [],
+          "afterHooks": [],
+          "fullFile": "",
+          "file": "",
+          "passes": [],
+          "failures": [],
+          "skipped": [],
+          "duration": duration,
+          "rootEmpty": true
+        }
+      ]
+    };
 };
 
-export const junitReport = async (testResult: Loadmill.TestResult, token: string, path?: string) => {
+export const junitReport = async (testResult: Loadmill.TestResult, request: any, path?: string) => {
     if (!testResult) {
         return;
     }
     console.log('Generating JUnit report...');
-    const reportId = await generateJunitReport(testResult.id, testResult.type, token);    
-    reportId && await waitForAndSaveJunitReport(reportId, token, path);
+    const reportId = await generateJunitReport(testResult.id, testResult.type, request);
+    reportId && await waitForAndSaveJunitReport(reportId, request, path);
     console.log('Finished generating JUnit report');
 }
 
-export const mochawesomeReport = async (testResult: Loadmill.TestResult, token: string, path?: string) => {
+export const mochawesomeReport = async (testResult: Loadmill.TestResult, path?: string, request?: any) => {
     if (!testResult) {
         return;
     }
-    const jsonResults = await generateMochawesomeReport(testResult, token);
+    const jsonResults = await generateMochawesomeReport(testResult, request);
     const resolvedPath = resolvePath(path ? path : './mochawesome-results', 'json');
     ensureDirectoryExistence(resolvedPath);
     fs.writeFileSync(resolvedPath, JSON.stringify(jsonResults, null, 2));
