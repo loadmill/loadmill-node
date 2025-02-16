@@ -37,7 +37,7 @@ You can launch an existing test plan by supplying the test plan id:
 ```js
 const testPlan = await loadmill.runTestPlan(
     {
-        id: "test-plan-uuid" // required
+        id: "test-plan-uuid", // required
         options: { //optional
             additionalDescription: "description to add", // added at the end of of each test suite
             labels: ["label1", "label2"], // run suites that have flows assigned to specific label/s
@@ -56,7 +56,14 @@ const result = await loadmill.wait(testPlan);
 
 The following code runs a very simple load test that gets a single page from `www.myapp.com` every second for one minute:
 ```js
-const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
+const loadmill = require('loadmill')({
+  token: process.env.LOADMILL_API_TOKEN,
+  httpOptions: {
+    agentOptions: {
+      keepAlive: true
+    }
+  }
+});
 
 // You may also give a path to a valid Test Configuration JSON file instead:
 const id = await loadmill.run({requests: [{url: "www.myapp.com"}]});
