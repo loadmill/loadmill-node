@@ -31,12 +31,13 @@
     }
   },
   "dependencies": {
+    "agentkeepalive": "4.6.0",
     "bluebird": "^3.4.7",
     "cancelable-awaiter": "^1.0.6",
     "commander": "^2.15.0",
     "lodash": "^4.17.21",
     "p-limit": "^3.1.0",
-    "superagent": "8.0.9",
+    "superagent": "10.1.1",
     "tslib": "^2.2.0",
     "uuid": "^3.0.1",
     "xml": "^1.0.1"
