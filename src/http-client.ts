@@ -3,7 +3,7 @@ const HTTPSAgent = require('agentkeepalive').HttpsAgent;
 const HTTPAgent = require('agentkeepalive');
 
 type SuperAgentStatic = typeof superagent;
-type KeepAliveOptions = {
+type AgentOptions = {
   timeout: number;
   freeSocketTimeout: number;
 };
@@ -14,20 +14,20 @@ const DEFAULT_SOCKET_TIMEOUT = 60000;
  */
 class SuperagentFactory {
   instance: SuperAgentStatic | null;
-  private keepaliveOptions: KeepAliveOptions;
+  private agentOptions: AgentOptions;
   private httpAgent;
   private httpsAgent;
   
   constructor() {
     this.instance = null;
     
-    this.keepaliveOptions = {
+    this.agentOptions = {
       timeout: DEFAULT_SOCKET_TIMEOUT,           
       freeSocketTimeout: DEFAULT_SOCKET_TIMEOUT / 2,
     };
     
-    this.httpAgent = new HTTPAgent(this.keepaliveOptions);
-    this.httpsAgent = new HTTPSAgent(this.keepaliveOptions);
+    this.httpAgent = new HTTPAgent(this.agentOptions);
+    this.httpsAgent = new HTTPSAgent(this.agentOptions);
   }
   
   /**
@@ -52,11 +52,11 @@ class SuperagentFactory {
   }
   
   /**
-   * Update keepalive options and recreate agents
-   * @param {Partial<KeepAliveOptions>} options - New keepalive options
+   * Update agent options and recreate agents
+   * @param {Partial<AgentOptions>} options - New agent options
    */
-  updateKeepAliveOptions(options: Partial<KeepAliveOptions>): void {
-    this.keepaliveOptions = { ...this.keepaliveOptions, ...options };
+  updateAgentOptions(options: Partial<AgentOptions>): void {
+    this.agentOptions = { ...this.agentOptions, ...options };
     
     if (this.httpAgent) {
       this.httpAgent.destroy();
@@ -65,8 +65,8 @@ class SuperagentFactory {
       this.httpsAgent.destroy();
     }
     
-    this.httpAgent = new HTTPAgent(this.keepaliveOptions);
-    this.httpsAgent = new HTTPSAgent(this.keepaliveOptions);
+    this.httpAgent = new HTTPAgent(this.agentOptions);
+    this.httpsAgent = new HTTPSAgent(this.agentOptions);
     
     this.reset();
   }
