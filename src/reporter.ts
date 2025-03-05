@@ -16,6 +16,7 @@ const superagent = httpClientFactory.getInstance();
 
 const POLLING_INTERVAL_MS = 5000;
 const MAX_POLLING = 36; // 3 minutes
+const MOCHA_AWESOME_RETRY_INTERVAL = 1000;
 
 const generateJunitReport = async (
     testId: string,
@@ -296,7 +297,7 @@ const toMochawesomeFailedFlow = (flowRun) => {
 const flowToMochawesone = async (suite: Loadmill.TestResult, flow: Loadmill.FlowRun, token: string) => {
 
     const url = getFlowRunAPI(flow);
-    const { body: flowData } = await superagent.get(url).auth(token, '');
+    const flowData = await fetchFlowRunData(url, token);
 
     const hasPassed = _hasPassed(flow);
     const hasFailed = flow.status === 'FAILED';
@@ -418,6 +419,21 @@ export const mochawesomeReport = async (testResult: Loadmill.TestResult, token: 
     const resolvedPath = resolvePath(path ? path : './mochawesome-results', 'json');
     ensureDirectoryExistence(resolvedPath);
     fs.writeFileSync(resolvedPath, JSON.stringify(jsonResults, null, 2));
+}
+
+async function fetchFlowRunData(url: string, token: string) {
+    try {
+        const { body } = await superagent.get(url).auth(token, '');
+        return body;
+    } catch (err) {
+        if (err.status === 502 || err.status === 503) {
+            await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
+            const { body } = await superagent.get(url).auth(token, '');
+            return body;
+        } else {
+            throw err;
+        }
+    }
 }
 
 function getFirstExecutedSuiteTime(suites: Loadmill.TestResult[]) {
