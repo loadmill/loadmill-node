@@ -426,13 +426,9 @@ async function fetchFlowRunData(url: string, token: string) {
         const { body } = await superagent.get(url).auth(token, '');
         return body;
     } catch (err) {
-        if (err.status === 502 || err.status === 503) {
-            await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
-            const { body } = await superagent.get(url).auth(token, '');
-            return body;
-        } else {
-            throw err;
-        }
+        await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
+        const { body } = await superagent.get(url).auth(token, '');
+        return body;
     }
 }
 
