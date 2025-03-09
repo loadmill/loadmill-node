@@ -1,6 +1,6 @@
 import './polyfills'
 import * as fs from 'fs';
-import httpClientFactory from './http-client';
+import * as superagent from 'superagent';
 import {
     filterLabels,
     filterTags,
@@ -12,7 +12,6 @@ import {
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
 const TEST_PLAN_POLL_INTERVAL_IN_MS = 10 * 1000 // 10 seconds
-const superagent = httpClientFactory.getInstance();
 
 export = Loadmill;
 
