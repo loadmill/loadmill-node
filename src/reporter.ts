@@ -14,7 +14,7 @@ import { TESTING_ORIGIN as testingServer, sleep } from './utils';
 
 const POLLING_INTERVAL_MS = 5000;
 const MAX_POLLING = 36; // 3 minutes
-const MOCHA_AWESOME_RETRY_INTERVAL = 1000;
+const MOCHA_AWESOME_RETRY_INTERVAL = 3000;
 
 const generateJunitReport = async (
     testId: string,
@@ -424,9 +424,19 @@ async function fetchFlowRunData(url: string, token: string) {
         const { body } = await superagent.get(url).auth(token, '');
         return body;
     } catch (err) {
-        await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
-        const { body } = await superagent.get(url).auth(token, '');
-        return body;
+        try {
+            await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
+            const { body } = await superagent.get(url).auth(token, '');
+            return body;
+        } catch (error) {
+            try {
+                await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
+                const { body } = await superagent.get(url).auth(token, '');
+                return body;   
+            } catch (error) {
+                console.log(`Failed to fetch flow run data for ${url}`);
+            }
+        }
     }
 }
 
