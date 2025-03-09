@@ -1,8 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as Loadmill from "./index";
-import httpClientFactory from './http-client';
-
+import * as superagent from 'superagent';
 const pLimit = require('p-limit');
 
 import flatMap = require('lodash/flatMap');
@@ -12,7 +11,6 @@ import forEach = require('lodash/forEach');
 import includes = require('lodash/includes');
 
 import { TESTING_ORIGIN as testingServer, sleep } from './utils';
-const superagent = httpClientFactory.getInstance();
 
 const POLLING_INTERVAL_MS = 5000;
 const MAX_POLLING = 36; // 3 minutes
