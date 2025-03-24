@@ -410,13 +410,17 @@ export const junitReport = async (testResult: Loadmill.TestResult, token: string
 }
 
 export const mochawesomeReport = async (testResult: Loadmill.TestResult, token: string, path?: string) => {
+    console.log('Generating Mochawesome report...');
     if (!testResult) {
+        console.log('No test result to generate report');
         return;
     }
     const jsonResults = await generateMochawesomeReport(testResult, token);
     const resolvedPath = resolvePath(path ? path : './mochawesome-results', 'json');
     ensureDirectoryExistence(resolvedPath);
+    console.log(`Writing Mochawesome report to ${resolvedPath}`);
     fs.writeFileSync(resolvedPath, JSON.stringify(jsonResults, null, 2));
+    console.log('Finished generating Mochawesome report');
 }
 
 async function fetchFlowRunData(url: string, token: string) {
@@ -425,16 +429,19 @@ async function fetchFlowRunData(url: string, token: string) {
         return body;
     } catch (err) {
         try {
+            console.log(`Failed to fetch flow run data for ${url}. Retrying...`);
             await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
             const { body } = await superagent.get(url).auth(token, '');
             return body;
         } catch (error) {
             try {
+                console.log(`Failed to fetch flow run data for ${url}. Retrying last time...`);
                 await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
                 const { body } = await superagent.get(url).auth(token, '');
                 return body;   
             } catch (error) {
                 console.log(`Failed to fetch flow run data for ${url}`);
+                throw error;
             }
         }
     }
