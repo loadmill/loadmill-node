@@ -22,8 +22,13 @@ const generateJunitReport = async (
     token: string
 ): Promise<string | undefined> => {
     try {
-        const { body: { junitReportId } } = await sendHttpRequest({ method: HttpMethods.POST, url: junitReportAPI,
-            body: { testId, runType },
+        const { body: { junitReportId } } = await sendHttpRequest({
+            method: HttpMethods.POST,
+            url: junitReportAPI,
+            body: {
+                testId,
+                runType
+            },
             token,
         });
     
@@ -38,7 +43,8 @@ const waitForAndSaveJunitReport = async (reportId: string, token: string, path?:
 
     while (polling_count < MAX_POLLING) {
         try {
-            const { body: { junitReport } } = await sendHttpRequest({ method: HttpMethods.GET, url: `${junitReportAPI}/${reportId}`,
+            const { body: { junitReport } } = await sendHttpRequest({
+                url: `${junitReportAPI}/${reportId}`,
                 token,
             });
 
@@ -427,19 +433,19 @@ export const mochawesomeReport = async (testResult: Loadmill.TestResult, token: 
 
 async function fetchFlowRunData(url: string, token: string) {
     try {
-        const { body } = await sendHttpRequest({ method: HttpMethods.GET, url, token });
+        const { body } = await sendHttpRequest({ url, token });
         return body;
     } catch (err) {
         try {
             console.log(`Failed to fetch flow run data for ${url}. Retrying...`);
             await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
-            const { body } = await sendHttpRequest({ method: HttpMethods.GET, url, token });
+            const { body } = await sendHttpRequest({ url, token });
             return body;
         } catch (error) {
             try {
                 console.log(`Failed to fetch flow run data for ${url}. Retrying last time...`);
                 await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
-                const { body } = await sendHttpRequest({ method: HttpMethods.GET, url, token });
+                const { body } = await sendHttpRequest({ url, token });
                 return body;   
             } catch (error) {
                 console.log(`Failed to fetch flow run data for ${url}`);

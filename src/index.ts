@@ -39,15 +39,20 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         let retries = 1;
         const intervalId = setInterval(async () => {
             try {
-                let { body } = await sendHttpRequest({ method: HttpMethods.GET, url: apiUrl,
-                    token,
-                });
+                let { body } = await sendHttpRequest({ url: apiUrl, token });
 
                 if (isTestInFinalState(body, testDef.type)) {
                     clearInterval(intervalId);
 
                     if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
-                        const { body: bodyWithFlows } = await sendHttpRequest({ method: HttpMethods.GET, url: apiUrl, query: { fetchAllFlows: true, groupFlowAttempts: true }, token });
+                        const { body: bodyWithFlows } = await sendHttpRequest({
+                            url: apiUrl,
+                            query: {
+                                fetchAllFlows: true,
+                                groupFlowAttempts: true,
+                            },
+                            token,
+                        });
                         body = bodyWithFlows;
                     }
 
@@ -109,7 +114,9 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 testPlanRunId,
                 err
             }
-        } = await sendHttpRequest({ method: HttpMethods.POST, url: `${testPlansAPI}/${testPlanId}/run`,
+        } = await sendHttpRequest({
+            method: HttpMethods.POST,
+            url: `${testPlansAPI}/${testPlanId}/run`,
             body: { 
                 overrideParameters,
                 additionalDescription,
@@ -151,12 +158,16 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 async () => {
                     config = toConfig(config, paramsOrCallback);
 
-                    const { body: { testId } } = await sendHttpRequest({ method: HttpMethods.POST, url: testingServer + "/api/tests",
+                    const { body: { testId } } = await sendHttpRequest({
+                        method: HttpMethods.POST,
+                        url: testingServer + "/api/tests",
                         body: config,
                         token,
                     });
 
-                    await sendHttpRequest({ method: HttpMethods.PUT, url: `${testingServer}/api/tests/${testId}/load`,
+                    await sendHttpRequest({
+                        method: HttpMethods.PUT,
+                        url: `${testingServer}/api/tests/${testId}/load`,
                         token,
                     });
 

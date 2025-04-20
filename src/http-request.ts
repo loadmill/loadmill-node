@@ -9,7 +9,7 @@ export const sendHttpRequest = async (options: HttpRequestOptions) => {
   }
   catch (err) {
     if (_shouldRetry(err)) {
-      console.log(`Retrying ${options.method.toUpperCase()} request to ${options.url}...`);
+      console.log(`Retrying ${(options.method || HttpMethods.GET).toUpperCase()} request to ${options.url}...`);
       await _delay(RETRY_DELAY_MS);
       return await _executeRequest(options);
     }
@@ -18,7 +18,7 @@ export const sendHttpRequest = async (options: HttpRequestOptions) => {
 };
 
 const _executeRequest = async (options: HttpRequestOptions) => {
-  const { method, url, token, query, body } = options;
+  const { method = HttpMethods.GET, url, token, query, body } = options;
   let request = superagent[method](url)
     .auth(token, '')
     .timeout(DEFAULT_TIMEOUT_MS);
@@ -45,7 +45,7 @@ const _shouldRetry = (err): boolean => {
 const _delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 type HttpRequestOptions = {
-  method: HttpMethods;
+  method?: HttpMethods;
   url: string;
   token: string;
   query?: Record<string, any>;
