@@ -1,6 +1,6 @@
 import './polyfills'
 import * as fs from 'fs';
-import * as superagent from 'superagent';
+import { HttpMethods, sendHttpRequest } from './http-request';
 import {
     filterLabels,
     filterTags,
@@ -39,14 +39,15 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         let retries = 1;
         const intervalId = setInterval(async () => {
             try {
-                let { body } = await superagent.get(apiUrl)
-                    .auth(token, '');
+                let { body } = await sendHttpRequest({ method: HttpMethods.GET, url: apiUrl,
+                    token,
+                });
 
                 if (isTestInFinalState(body, testDef.type)) {
                     clearInterval(intervalId);
 
                     if (testDef.type === Loadmill.TYPES.TEST_PLAN) {
-                        const { body: bodyWithFlows } = await superagent.get(apiUrl, { fetchAllFlows: true, groupFlowAttempts: true }).auth(token, '');
+                        const { body: bodyWithFlows } = await sendHttpRequest({ method: HttpMethods.GET, url: apiUrl, query: { fetchAllFlows: true, groupFlowAttempts: true }, token });
                         body = bodyWithFlows;
                     }
 
@@ -108,8 +109,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 testPlanRunId,
                 err
             }
-        } = await superagent.post(`${testPlansAPI}/${testPlanId}/run`)
-            .send({ 
+        } = await sendHttpRequest({ method: HttpMethods.POST, url: `${testPlansAPI}/${testPlanId}/run`,
+            body: { 
                 overrideParameters,
                 additionalDescription,
                 labels,
@@ -122,9 +123,9 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 inlineParameterOverride,
                 apiCatalogService,
                 turboParallel,
-            })
-            .auth(token, '');
-
+            },
+            token,
+        });
         if (err || !testPlanRunId) {
             console.error(err ? JSON.stringify(err) : "The server encountered an error while handling the request");
             return;
@@ -150,12 +151,14 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 async () => {
                     config = toConfig(config, paramsOrCallback);
 
-                    const { body: { testId } } = await superagent.post(testingServer + "/api/tests")
-                        .send(config)
-                        .auth(token, '');
+                    const { body: { testId } } = await sendHttpRequest({ method: HttpMethods.POST, url: testingServer + "/api/tests",
+                        body: config,
+                        token,
+                    });
 
-                    await superagent.put(`${testingServer}/api/tests/${testId}/load`)
-                        .auth(token, '');
+                    await sendHttpRequest({ method: HttpMethods.PUT, url: `${testingServer}/api/tests/${testId}/load`,
+                        token,
+                    });
 
                     return testId;
                 },

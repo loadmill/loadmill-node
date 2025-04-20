@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as Loadmill from "./index";
-import * as superagent from 'superagent';
+import { HttpMethods, sendHttpRequest } from './http-request';
 const pLimit = require('p-limit');
 
 import flatMap = require('lodash/flatMap');
@@ -22,9 +22,10 @@ const generateJunitReport = async (
     token: string
 ): Promise<string | undefined> => {
     try {
-        const { body: { junitReportId } } = await superagent.post(junitReportAPI)
-            .send({ testId, runType })
-            .auth(token, '');
+        const { body: { junitReportId } } = await sendHttpRequest({ method: HttpMethods.POST, url: junitReportAPI,
+            body: { testId, runType },
+            token,
+        });
     
         return junitReportId;
     } catch (err) {
@@ -37,8 +38,9 @@ const waitForAndSaveJunitReport = async (reportId: string, token: string, path?:
 
     while (polling_count < MAX_POLLING) {
         try {
-            const { body: { junitReport } } = await superagent.get(`${junitReportAPI}/${reportId}`)
-                .auth(token, '');
+            const { body: { junitReport } } = await sendHttpRequest({ method: HttpMethods.GET, url: `${junitReportAPI}/${reportId}`,
+                token,
+            });
 
             saveJunitReport(junitReport, path);
             break;
@@ -425,19 +427,19 @@ export const mochawesomeReport = async (testResult: Loadmill.TestResult, token: 
 
 async function fetchFlowRunData(url: string, token: string) {
     try {
-        const { body } = await superagent.get(url).auth(token, '');
+        const { body } = await sendHttpRequest({ method: HttpMethods.GET, url, token });
         return body;
     } catch (err) {
         try {
             console.log(`Failed to fetch flow run data for ${url}. Retrying...`);
             await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
-            const { body } = await superagent.get(url).auth(token, '');
+            const { body } = await sendHttpRequest({ method: HttpMethods.GET, url, token });
             return body;
         } catch (error) {
             try {
                 console.log(`Failed to fetch flow run data for ${url}. Retrying last time...`);
                 await sleep(MOCHA_AWESOME_RETRY_INTERVAL);
-                const { body } = await superagent.get(url).auth(token, '');
+                const { body } = await sendHttpRequest({ method: HttpMethods.GET, url, token });
                 return body;   
             } catch (error) {
                 console.log(`Failed to fetch flow run data for ${url}`);
