@@ -8,6 +8,7 @@ export const sendHttpRequest = async (options: HttpRequestOptions) => {
     return await _executeRequest(options);
   }
   catch (err) {
+    console.error(`Error during ${(options.method || HttpMethods.GET).toUpperCase()} request to ${options.url}:`, err);
     if (_shouldRetry(err)) {
       console.log(`Retrying ${(options.method || HttpMethods.GET).toUpperCase()} request to ${options.url}...`);
       await _delay(RETRY_DELAY_MS);
@@ -38,6 +39,7 @@ const _executeRequest = async (options: HttpRequestOptions) => {
 const _shouldRetry = (err): boolean => {
   return err.timeout ||
     err.code === 'ECONNREFUSED' ||
+    err.code === 'ECONNABORTED' ||
     err.code === 'ETIMEDOUT' ||
     err.code === 'ECONNRESET';
 }
