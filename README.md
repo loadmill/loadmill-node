@@ -63,6 +63,23 @@ const id = await loadmill.run({requests: [{url: "www.myapp.com"}]});
 console.log("Load test started: " + id);
 ```
 
+You can also create a load test from an existing test-suite flow and immediately launch it:
+```js
+const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
+
+const loadTest = await loadmill.runLoadTestFromFlow({
+    suiteId: "test-suite-uuid",
+    flowId: "flow-uuid",
+    // optional: forwarded to create-load endpoint
+    loadTestOptions: {
+        concurrency: 10,
+        duration: 60000 // one minute
+    }
+});
+
+const result = await loadmill.wait(loadTest);
+```
+
 ### Test Configuration
 
 The JSON test configuration may be exported from the loadmill test editor or from an old test run.
@@ -101,7 +118,7 @@ loadmill.run("./load-tests/parametrized_test.json", {host: "test.myapp.com", por
 
 The loadmill Command Line Interface basically wraps the functions provided by the node module:
 ```
-loadmill <test-plan-id || load-test-config-file> -t <token> [options] [parameter=value...]
+loadmill <test-plan-id || load-test-config-file || flow-id> -t <token> [options] [parameter=value...]
 ```
 
 ### Test Plan
@@ -137,6 +154,20 @@ printed out at the end:
 loadmill test.json -lw -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
 
+You can create and run a load test from a specific test-suite flow:
+```
+loadmill <flow-id> --loadTest --suite-id <test-suite-id> -w -t <token>
+```
+
+You may also pass the flow id with `--flow-id` instead of positional input:
+```
+loadmill --loadTest --suite-id <test-suite-id> --flow-id <flow-id> -w -t <token>
+```
+
+You may also pass load test options to adjust the running test:
+```
+loadmill --loadTest --suite-id <test-suite-id> --flow-id <flow-id> --load-test-options '{"concurrency":10,"duration":120000}' -w -t <token>
+```
 ### Exit Status
 
 Unless the `-n` or `--no-bail` option is set, the CLI process will exit with a nonzero exit code if the test had not passed.
@@ -159,6 +190,10 @@ Full list of command line options:
 - `-h, --help` Output usage information.
 - `-t, --token <token>` Provide a Loadmill API Token. You must provide a token in order to run tests.
 - `-l, --load-test` Launch a load test. 
+- `--loadTest` Create a load test from an existing test-suite flow and launch it.
+- `--suite-id <suiteId>` Test suite id that contains the selected flow (used with `--loadTest`).
+- `--flow-id <flowId>` Flow id for `--loadTest` (optional when using positional input).
+- `--load-test-options <loadTestOptions>` JSON object of load test options passed when creating a load from flow.
 - `--test-plan` Launch a test plan (default). 
 - `-p, --parallel` Set the concurrency of a running test suites in a test plan. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current test-plan's description.
