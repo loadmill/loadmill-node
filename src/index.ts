@@ -24,6 +24,8 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
 
     const testingServer = _testingServerHost ? `https://${_testingServerHost}` : TESTING_ORIGIN;
     const testPlansAPI = `${testingServer}/api/test-plans`;
+    const loadTestsAPI = `${testingServer}/api/tests`;
+    const testSuiteFlowAPI = (suiteId, flowId) => `${testingServer}/api/test-suites/${suiteId}/flows/${flowId}`;
 
     async function _wait(testDefOrId: string | Loadmill.TestDef, callback?: Loadmill.Callback): Promise<Loadmill.TestResult> {
         let resolve, reject;
@@ -140,6 +142,48 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         return { id: testPlanRunId, type: Loadmill.TYPES.TEST_PLAN };
     }
 
+    async function _runLoadTestFromFlow(
+        flowLoad: Loadmill.FlowLoadDef
+    ): Promise<Loadmill.TestDef> {
+        const {
+            suiteId,
+            flowId,
+            loadTestOptions,
+        } = flowLoad;
+
+        let res;
+        try {
+            res = await sendHttpRequest({
+                method: HttpMethods.POST,
+                url: `${testSuiteFlowAPI(suiteId, flowId)}/loads`,
+                body: loadTestOptions ? { loadTestOptions } : undefined,
+                token,
+            });
+        } catch (e) {
+            if(e.status == 404) {
+                throw new Error(`Could not find a flow ${flowId} in suite ${suiteId}`);
+            }
+            if(e.status == 400) {
+                throw new Error(e?.response?.text || 'Invalid test configuraion');
+            }
+            throw e;
+        }
+
+        const loadTestId = res?.body && res?.body.id;
+
+        if (!loadTestId) {
+            throw new Error(`Could not create load test from flow ${flowId} in suite ${suiteId}`);
+        }
+
+        await sendHttpRequest({
+            method: HttpMethods.PUT,
+            url: `${loadTestsAPI}/${loadTestId}/load`,
+            token,
+        });
+
+        return { id: loadTestId, type: Loadmill.TYPES.LOAD };
+    }
+
     async function _junitReport(testResult: Loadmill.TestResult, path?: string) {
         return createJunitReport(testResult, token, path);
     }
@@ -187,6 +231,12 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         ): Promise<Loadmill.TestDef | undefined> {
 
             return _runTestPlan(testPlan, params);
+        },
+
+        async runLoadTestFromFlow(
+            flowLoad: Loadmill.FlowLoadDef,
+        ): Promise<Loadmill.TestDef> {
+            return _runLoadTestFromFlow(flowLoad);
         },
 
         async junitReport(testResult: Loadmill.TestResult, path?: string): Promise<void> {
@@ -363,6 +413,11 @@ namespace Loadmill {
         id: string;
         description?: string;
         options?: TestPlanOptions;
+    }
+    export interface FlowLoadDef {
+        suiteId: string;
+        flowId: string;
+        loadTestOptions?: any;
     }
     export interface TestSuiteOptions {
         additionalDescription?: string;

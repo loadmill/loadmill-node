@@ -13,14 +13,17 @@ import {
 import { junitReport as createJunitReport, mochawesomeReport as createMochawesomeReport } from './reporter';
 
 program
-    .usage("<testPlanId | load-config-file> -t <token> [options] [parameter=value...]")
+    .usage("<testPlanId | load-config-file | flowId> -t <token> [options] [parameter=value...]")
     .description(
         "Run a test plan (default option) or a load test on loadmill.com.\n  " +
         "You may set parameter values by passing space-separated 'name=value' pairs, e.g. 'host=www.myapp.com port=80' or supply a file using --parameters-file.\n\n  " +
         "Learn more at https://www.npmjs.com/package/loadmill#cli"
     )
     .option("-t, --token <token>", "Loadmill API Token. You must provide a token in order to run tests.")
-    .option("-l, --load-test", "Launch a load test.")
+    .option("-l, --load-test", "Create a load test from a test suite flow and launch it.")
+    .option("--suite-id <test-suite-id>", "Test suite id that contains the flow (used with -l).")
+    .option("--flow-id <test-suite-flow-id>", "Flow id to use when creating a load test (used with -l). Defaults to positional input.")
+    .option("--load-test-options <loadTestOptions>", "Load test options JSON to pass when creating a load test from flow (e.g. '{\"users\":10,\"duration\":60}').")
     .option("--test-plan", "Launch a test plan (default option).")
     .option("-p, --parallel <parallel>", "Set the concurrency of a running test suites in a test plan")
     .option("--additional-description <description>", "Add an additional description at the end of the current suite's description - available only for test suites.")
@@ -70,6 +73,9 @@ async function start() {
         mochawesomeReportPath,
         parallel,
         loadTest,
+        suiteId,
+        flowId,
+        loadTestOptions,
         testPlan,
         additionalDescription,
         labels,
@@ -113,6 +119,9 @@ async function start() {
             parallel,
             input,
             loadTest,
+            suiteId,
+            flowId,
+            loadTestOptions,
             testPlan,
             additionalDescription,
             labels,
@@ -149,7 +158,7 @@ async function start() {
     }
 
     let res: Loadmill.TestResult | undefined;
-    if (testPlan || !loadTest) {
+    if (testPlan || (!loadTest)) {
         
         if (!isUUID(input)) { //if test plan flag is on then the input should be uuid
             validationFailed("Test plan run flag is on but no valid test plan id was provided.");
@@ -231,16 +240,37 @@ async function start() {
 
     else { // if test plan flag is off then the input should be a conf file
 
-        const configFile = input;
-        if (!configFile) {
-            validationFailed("No configuration file were provided.");
-        }
         let res;
+        let id;
 
-        logger.verbose(`Launching ${configFile} as load test`);
-        const id = await loadmill.run(configFile, parameters);
+        if (loadTest) {
+            const effectiveFlowId = flowId || input;
 
-        if (wait && loadTest) {
+            if (!suiteId || !isUUID(suiteId)) {
+                validationFailed("Load from flow mode requires a valid --suite-id value.");
+            }
+            if (!effectiveFlowId || !isUUID(effectiveFlowId)) {
+                validationFailed("Load from flow mode requires a valid flow id (provide --flow-id or positional input).");
+            }
+
+            logger.verbose(`Creating and launching load test from suite ${suiteId} flow ${effectiveFlowId}`);
+            const loadTestDef = await loadmill.runLoadTestFromFlow({
+                suiteId,
+                flowId: effectiveFlowId,
+                loadTestOptions: parseJsonOption(loadTestOptions),
+            });
+            id = loadTestDef.id;
+        } else {
+            const configFile = input;
+            if (!configFile) {
+                validationFailed("No configuration file were provided.");
+            }
+
+            logger.verbose(`Launching ${configFile} as load test`);
+            id = await loadmill.run(configFile, parameters);
+        }
+
+        if (wait && (loadTest)) {
             logger.verbose("Waiting for test:", res ? res.id : id);
             res = await loadmill.wait(res || id);
         }
@@ -250,7 +280,7 @@ async function start() {
         }
 
         if (res && res.passed != null && !res.passed) {
-            logger.error(`❌  Test ${configFile} failed.`);
+            logger.error(`❌  Test ${id} failed.`);
 
             if (bail) {
                 process.exit(1);
@@ -274,5 +304,22 @@ function toParams(rawParams: string[], filePath?: string): Loadmill.Params {
     } catch (err) {
         validationFailed(err.message);
         return {};
+    }
+}
+
+function parseJsonOption(value: any) {
+    if (!value) {
+        return undefined;
+    }
+
+    if (typeof value === 'object') {
+        return value;
+    }
+
+    try {
+        return JSON.parse(value);
+    } catch (err) {
+        validationFailed(`Invalid JSON provided for load test options: ${err.message}`);
+        return undefined;
     }
 }
