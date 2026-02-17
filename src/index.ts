@@ -163,6 +163,9 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
             if(e.status == 404) {
                 throw new Error(`Could not find a flow ${flowId} in suite ${suiteId}`);
             }
+            if(e.status == 400) {
+                throw new Error(e?.response?.text || 'Invalid test configuraion');
+            }
             throw e;
         }
 
