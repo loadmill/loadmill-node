@@ -70,10 +70,13 @@ const loadmill = require('loadmill')({token: process.env.LOADMILL_API_TOKEN});
 const loadTest = await loadmill.runLoadTestFromFlow({
     suiteId: "test-suite-uuid",
     flowId: "flow-uuid",
-    // optional: forwarded to create-load endpoint
+    // optional: more info can be found  at https://docs.loadmill.com/auth/rest-api#load-test-option
     loadTestOptions: {
+        rampUp: 0,
+        sensitiveData: false,
         concurrency: 10,
-        duration: 60000 // one minute
+        duration: 60000, // one minute
+        rps: 100
     }
 });
 
@@ -154,6 +157,7 @@ printed out at the end:
 loadmill test.json -lw -t DW2rTlkNmE6A3ax5LVTSDxv2Jfw4virjQpmbOaLG
 ```
 
+### Run Flow as Load Test
 You can create and run a load test from a specific test-suite flow:
 ```
 loadmill <flow-id> --loadTest --suite-id <test-suite-id> -w -t <token>
@@ -193,7 +197,12 @@ Full list of command line options:
 - `--loadTest` Create a load test from an existing test-suite flow and launch it.
 - `--suite-id <suiteId>` Test suite id that contains the selected flow (used with `--loadTest`).
 - `--flow-id <flowId>` Flow id for `--loadTest` (optional when using positional input).
-- `--load-test-options <loadTestOptions>` JSON object of load test options passed when creating a load from flow.
+- `--load-test-options <loadTestOptions>` JSON object of load test options passed when creating a load from flow. Supported fields:
+  - `rampUp: number`
+  - `sensitiveData: boolean`
+  - `duration: number` // in milliseconds 
+  - `concurrency: number`
+  - `rps: number`
 - `--test-plan` Launch a test plan (default). 
 - `-p, --parallel` Set the concurrency of a running test suites in a test plan. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current test-plan's description.
