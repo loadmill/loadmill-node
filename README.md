@@ -76,7 +76,8 @@ const loadTest = await loadmill.runLoadTestFromFlow({
         sensitiveData: false,
         concurrency: 10,
         duration: 60000, // one minute
-        rps: 100
+        rps: 100,
+        failureErrorRate: 0.05 // percentage as a fraction between 0 and 1 (5%)
     }
 });
 
@@ -170,7 +171,7 @@ loadmill --loadTest --suite-id <test-suite-id> --flow-id <flow-id> -w -t <token>
 
 You may also pass load test options to adjust the running test:
 ```
-loadmill --loadTest --suite-id <test-suite-id> --flow-id <flow-id> --load-test-options '{"concurrency":10,"duration":120000}' -w -t <token>
+loadmill --loadTest --suite-id <test-suite-id> --flow-id <flow-id> --load-test-options '{"concurrency":10,"duration":120000,"failureErrorRate":0.05}' -w -t <token>
 ```
 ### Exit Status
 
@@ -203,6 +204,7 @@ Full list of command line options:
   - `duration: number` // in milliseconds 
   - `concurrency: number`
   - `rps: number`
+  - `failureErrorRate: number` // percentage as a fraction between 0 and 1 (e.g. 0.05 = 5%)
 - `--test-plan` Launch a test plan (default). 
 - `-p, --parallel` Set the concurrency of a running test suites in a test plan. Max concurrency is 10.
 - `--additional-description <description>` Add an additional description at the end of the current test-plan's description.
