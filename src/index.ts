@@ -107,6 +107,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
         const tags = testPlan.options && testPlan.options.tags && filterTags(testPlan.options.tags);
         const parallel = testPlan.options && testPlan.options.parallel;
         const branch = testPlan.options && testPlan.options.branch;
+        const overrideSuites = testPlan.options && testPlan.options.overrideSuites;
         const inlineParameterOverride = !!(testPlan.options && testPlan.options.inlineParameterOverride);
         const maxFlakyFlowRetries = testPlan.options && testPlan.options.maxFlakyFlowRetries;
         const apiCatalogService = testPlan.options && testPlan.options.apiCatalogService;
@@ -127,6 +128,7 @@ function Loadmill(options: Loadmill.LoadmillOptions) {
                 parallel,
                 tags,
                 branch,
+                overrideSuites,
                 maxFlakyFlowRetries,
                 labelsExpression,
                 inlineParameterOverride,
@@ -435,6 +437,7 @@ namespace Loadmill {
         tags?: string[] | null;
         parallel?: number | string;
         branch?: string;
+        overrideSuites?: string[] | null;
         maxFlakyFlowRetries?: number | string;
         parametersFile?: string;
         inlineParameterOverride?: boolean;

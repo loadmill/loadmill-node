@@ -43,6 +43,7 @@ const testPlan = await loadmill.runTestPlan(
             labels: ["label1", "label2"], // run suites that have flows assigned to specific label/s
             pool: "some-pool-name", // Execute tests from a dedicated agent's pool (when using private agent)
             parallel: 2 , // Set the concurrency amount of a running test suites in a test plan. Max concurrency is 10
+            overrideSuites: ["suite-uuid-1", "suite-uuid-2"], // run only the specified suite UUIDs from the plan
             tags: ["tag1", "another tags"], // Set of strings attached to the plan run and later can be query by
         }
     },
@@ -144,6 +145,8 @@ You can tell loadmill to run flows that are assigned to a specific label with th
 loadmill <test-plan-id> --test-plan -t <token> --labels "label1,label2" --additional-description "build 1986"
 ```
 
+You can restrict a test-plan run to specific suites with `--overrideSuites <uuid1,uuid2,...>`.
+
 ### Load Tests
 
 You may launch a load test by setting the `-l` or `--load-test` option:
@@ -212,6 +215,7 @@ Full list of command line options:
 - `--labels-expression <labelsExpression>`, Run a test plan's suites with flows that match the labels expression. An expression may contain the characters ( ) & | ! (e.g. '(label1 | label2) & !label3')
 - `--pool <pool>` Execute tests from a dedicated agent's pool (when using private agent). 
 - `--tags <tags>` Tag a test plan run with a comma separated list of tags (e.g. 'tag1,tag2'). 
+- `--overrideSuites <overrideSuites>` Run only the specified test suites in the test plan. Provide a comma separated list of suite UUIDs.
 - `-b --branch <branch>` Run the test plan's suites from a GitHub branch. The latest version of the selected Git branch will be used as the test configuration for the chosen Test Plan. 
 - `--retry-failed-flows <numberOfRetries>` Configure the test plan to re-run failed flows in case your tested system is unstable. Tests that pass after a retry will be considered successful. 
 - `--parameters-file <parametersFile>` Supply a file with parameters to override. File format should be 'name=value' divided by new line.
