@@ -31,6 +31,7 @@ program
     .option("--labels-expression <labelsExpression>", "Run a test plan's suites with flows that match the labels expression. An expression may contain the characters ( ) & | ! (e.g. '(label1 | label2) & !label3')")
     .option("--pool <pool>", "Execute tests from a dedicated agent's pool (when using private agent)")
     .option("--tags <tags>", "Tag a test plan run with a comma separated list of tags (e.g. 'tag1,tag2')")
+    .option("--overrideSuites <overrideSuites>", "Run only the specified test suites in the test plan. Provide a comma separated list of suite UUIDs.")
     .option("-w, --wait", "Wait for the test to finish.")
     .option("-n, --no-bail", "Return exit code 0 even if test fails.")
     .option("-q, --quiet", "Do not print out anything (except errors).")
@@ -82,6 +83,7 @@ async function start() {
         labelsExpression,
         pool,
         tags,
+        overrideSuites,
         branch,
         retryFailedFlows,
         parametersFile,
@@ -128,6 +130,7 @@ async function start() {
             labelsExpression,
             pool,
             tags,
+            overrideSuites,
             branch,
             retryFailedFlows,
             inlineParameterOverride,
@@ -166,6 +169,7 @@ async function start() {
 
         const planLabels = convertStrToArr(labels);
         const planTags = convertStrToArr(tags);
+        const planOverrideSuites = convertStrToArr(overrideSuites);
         
         try {
             logger.verbose(`Executing test plan with id ${input}`);
@@ -180,6 +184,7 @@ async function start() {
                         tags : planTags,
                         parallel, 
                         branch,
+                        overrideSuites: planOverrideSuites,
                         maxFlakyFlowRetries: retryFailedFlows,
                         inlineParameterOverride,
                         apiCatalogService,
